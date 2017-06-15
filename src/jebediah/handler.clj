@@ -12,7 +12,7 @@
 
 (defroutes app-routes
   (GET "/" [] "Hello World")
-  (POST "/" request (response (ai/dispatch-action (log/spy :info (:body request)))))
+  (POST "/" request (response (log/spy :info (ai/dispatch-action (log/spy :info (:body request))))))
   (route/not-found "Not Found"))
 
 
