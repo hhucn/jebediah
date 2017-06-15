@@ -9,3 +9,5 @@
                                (slurp-json)
                                (:message)
                                (simple-apiai-response)))
+
+(defaction echo_name [request-body] (simple-apiai-response (str "Hello " (get-in request-body [:result :parameters :given-name]))))
