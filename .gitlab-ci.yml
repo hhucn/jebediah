@@ -1,0 +1,8 @@
+image: clojure:alpine
+
+tests:
+  stage: test
+  before_script:
+    - lein deps
+  script:
+    - lein test
