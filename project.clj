@@ -8,7 +8,8 @@
                  [ring/ring-defaults "0.2.1"]
                  [ring/ring-json "0.4.0"]
                  [ring-logger "0.7.7"]
-                 [org.clojure/data.json "0.2.6"]]
+                 [org.clojure/data.json "0.2.6"]
+                 [clj-http "3.6.1"]]
   :plugins [[lein-ring "0.9.7"]]
   :ring {:handler jebediah.handler/app}
   :profiles
