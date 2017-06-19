@@ -7,8 +7,8 @@
             [ring.util.response :refer [response]]
             [clojure.tools.logging :as log]
             [apiai-clj.core :as ai]
-            [jebediah.hello :refer :all]
-            [jebediah.actions.dbas :refer :all]))
+            [jebediah.hello :refer-macros [hello_world echo_name how_long]]
+            [jebediah.actions.dbas :refer-macros [dbas.start-discussions dbas.list-discussions dbas.list-discussions.more]]))
 
 (defroutes app-routes
   (GET "/" [] "Hello World")
