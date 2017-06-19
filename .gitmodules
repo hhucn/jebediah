@@ -1,0 +1,4 @@
+[submodule "lib/apiai-clj"]
+	path = lib/apiai-clj
+	url = git@github.com:MrOerni/apiai-clj.git
+	branch = develop

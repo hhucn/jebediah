@@ -1,12 +1,12 @@
 (ns jebediah.handler
-  (:require [compojure.core :refer :all]
+  (:require [compojure.core :refer [defroutes GET POST]]
             [compojure.route :as route]
             [ring.middleware.defaults :refer [wrap-defaults site-defaults]]
             [ring.middleware.json :refer [wrap-json-response wrap-json-body]]
             [ring.logger :as logger]
             [ring.util.response :refer [response]]
             [clojure.tools.logging :as log]
-            [jebediah.apiaiapi :as ai]
+            [apiai-clj.core :as ai]
             [jebediah.hello :refer :all]
             [jebediah.actions.dbas :refer :all]))
 

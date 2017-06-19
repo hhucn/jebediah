@@ -1,5 +1,5 @@
 /target
-/lib
+/lib/**
 /classes
 /checkouts
 pom.xml
@@ -10,4 +10,11 @@ pom.xml.asc
 /.nrepl-port
 /jebediah.iml
 /.idea/
+<<<<<<< Updated upstream
 .#*
+=======
+.#*
+
+
+!/lib/apiai-clj
+>>>>>>> Stashed changes
