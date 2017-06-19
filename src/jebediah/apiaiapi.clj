@@ -18,17 +18,20 @@
   "Gets the fulfillment part of the api.ai request or nil."
   [request] (get-in request [:result :fulfillment]))
 
-(defn fulfillment-empty? [request]
+(defn fulfillment-empty?
   "True if speech is empty or there is no fulfillment"
+  [request]
   (= "" (get-in request [:result :fulfillment :speech] "")))
 
 (defmulti dispatch-action
           "Executes an action"
           #(get-in % [:result :action]))
 
-(defmethod dispatch-action :default [r] (if (fulfillment-empty? r)
-                                          (simple-speech-response "Action: " (get-in r [:result :action]) " not implemented! Sorry.")
-                                          (get-fulfillment r)))
+(defmethod dispatch-action :default
+  [r]
+  (if (fulfillment-empty? r)
+    (simple-speech-response "Action: " (get-in r [:result :action]) " not implemented! Sorry.")
+    (get-fulfillment r)))
 
 (defmacro defaction
   "Creates and registers a new action. Name this action exactly like you did in api.ai!"
@@ -36,9 +39,10 @@
   `(defmethod dispatch-action ~(str name) ~params
      ~@body))
 
-(defn update-entities! [name entries]
+(defn update-entities!
   "Updates the entities"
+  [name entries]
   (client/put (str apiai-base "/entities")
-            {:headers {:Authorization [(str "Bearer" dev-token)]}
-             :content-type :json
-             :body (json/write-str [{:name name :entries entries}])}))
+              {:headers {:Authorization [(str "Bearer" dev-token)]}
+               :content-type :json
+               :body (json/write-str [{:name name :entries entries}])}))
