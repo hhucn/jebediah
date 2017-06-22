@@ -7,7 +7,7 @@
                          "Town has to cut spending"
                          "What to eat"])
 
-(ai/update-entities! "discussion-topic" (mapv (fn [v] {:value v :synonyms []}) sample-discussions))
+;; (ai/update-entities! "discussion-topic" (mapv (fn [v] {:value v :synonyms []}) sample-discussions))
 
 (defaction dbas.start-discussions [request]
     (if (ai/fulfillment-empty? request)

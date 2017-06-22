@@ -1,7 +1,7 @@
 (ns jebediah.handler-test
   (:require [clojure.test :refer :all]
             [ring.mock.request :as mock]
-            [jebediah.handler :refer :all]))
+            [jebediah.handler :refer [app]]))
 
 (deftest test-app
   (testing "main route"
