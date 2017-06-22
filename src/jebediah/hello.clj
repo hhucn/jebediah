@@ -1,5 +1,5 @@
 (ns jebediah.hello
-  (:require [apiai-clj.core :as ai :refer [defaction]]
+  (:require [apiai.core :as ai :refer [defaction]]
             [clojure.data.json :as json]))
 
 (defn slurp-json [f & opts]

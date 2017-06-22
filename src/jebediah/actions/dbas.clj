@@ -1,5 +1,5 @@
 (ns jebediah.actions.dbas
-  (:require [apiai-clj.core :as ai :refer [defaction]]
+  (:require [apiai.core :as ai :refer [defaction]]
             [clojure.string :as str]))
 
 (def sample-discussions ["Cats or dogs"
