@@ -1,13 +1,12 @@
 image: clojure:alpine
 
-variables:
-  GIT_SUBMODULE_STRATEGY: recursive
-  GIT_SSL_NO_VERIFY: "true"
-
+before_script:
+    - apk add --update git
+    - git submodule sync --recursive
+    - git submodule update --init --recursive
+    - lein deps
 
 tests:
   stage: test
-  before_script:
-    - lein deps
   script:
     - lein test
