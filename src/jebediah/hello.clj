@@ -2,12 +2,11 @@
   (:require [apiai.core :as ai :refer [defaction]]
             [clojure.data.json :as json]))
 
-(defn slurp-json [f & opts]
-  `(json/read-str (slurp ~f ~@opts) :key-fn keyword))
+(defn slurp-json [f]
+  (json/read-str (slurp f) :key-fn keyword))
 
 (defaction hello_world [_]
-  (-> "https://dbas.cs.uni-duesseldorf.de/api/hello"
-      (slurp-json)
+  (-> (slurp-json "https://dbas.cs.uni-duesseldorf.de/api/hello")
       (:message)
       (ai/simple-speech-response)))
 
