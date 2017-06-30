@@ -7,9 +7,7 @@
 ;; (ai/update-entities! "discussion-topic" (mapv (fn [v] {:value v :synonyms []}) sample-discussions))
 
 (defaction dbas.start-discussions [request]
-    (if (ai/fulfillment-empty? request) ;; this is just a test for slot filling with the webhook
-        (ai/simple-speech-response "Ok lets talk about " (get-in request [:result :parameters :discussion-topic]) ".")
-        (ai/get-fulfillment request)))
+  (ai/simple-speech-response "About what position do you want to talk about?"))
 
 (defaction dbas.list-discussions [_]
   (ai/simple-speech-response "The topics are: " (str/join ", " (take 3 (map :title (dbas/get-issues)))) "."))
@@ -29,3 +27,8 @@
       (if (some? topic)
         (format "Here are more informations about %s: %s" (:title topic) (:info topic))
         (str "Sorry, but there is no topic: " requested-topic)))))
+
+(defaction dbas.show-positions-with-discussion [request]
+  (let [topic (:discussion (ai/get-contexts request))]
+    (ai/simple-speech-response "Here are some positions for " (get-in topic [:parameters :discussion-topic.original]) ": "
+                               (str/join ", " (take 3 (dbas/get-positions-for-issue (get-in topic [:parameters :discussion-topic])))))))
