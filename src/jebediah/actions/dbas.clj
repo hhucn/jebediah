@@ -1,5 +1,6 @@
 (ns jebediah.actions.dbas
   (:require [apiai.core :as ai :refer [defaction]]
+            [apiai.facebook :as fb]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [jebediah.dbas-adapter.core :as dbas]))
@@ -9,11 +10,23 @@
 (defaction dbas.start-discussions [request]
   (ai/simple-speech-response "About what position do you want to talk about?"))
 
-(defaction dbas.list-discussions [_]
-  (ai/simple-speech-response "The topics are: " (str/join ", " (take 3 (map :title (dbas/get-issues)))) "."))
+(defn fb-list-entry [entry]
+  {:title (:title entry)
+   :subtitle (:subtitle entry)
+   :buttons [{:type "postback"
+              :title "This!"
+              :payload (:title entry)}]})
+
+(defaction dbas.list-discussions [request]
+  (case (ai/get-service request)
+    :facebook (fb/simple-list-response (map fb-list-entry
+                                         (take 3 (:issues (dbas/slurp-dbas "query{issues{title, subtitle:info}}")))))
+    (ai/simple-speech-response "The topics are: " (str/join ", "
+                                                            (take 3 (map :title (dbas/get-issues)))) ".")))
+
 
 (defaction dbas.list-discussions.more [_]
-  (let [more-topics (drop 3 (map :title (dbas/get-issues)))
+  (let [more-topics (drop 3 (map :title (:issues (dbas/slurp-dbas "query{issues{title, subtitle:info}}"))))
         topic-count (count more-topics)]
     (ai/simple-speech-response
      (if (zero? topic-count)
@@ -22,7 +35,7 @@
 
 (defaction dbas.info-discussion [request]
   (let [requested-topic (get-in request [:result :parameters :discussion-topic])
-        topic (first (filter #(= (:title %) requested-topic) (dbas/get-issues)))]
+        topic (first (filter #(= (:slug %) requested-topic) (dbas/slurp-dbas "query{issues{title, slug}}")))]
     (ai/simple-speech-response
       (if (some? topic)
         (format "Here are more informations about %s: %s" (:title topic) (:info topic))
