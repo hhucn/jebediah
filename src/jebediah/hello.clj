@@ -1,5 +1,6 @@
 (ns jebediah.hello
   (:require [apiai.core :as ai :refer [defaction]]
+            [apiai.integrations.agent :as agent]
             [clojure.data.json :as json]))
 
 (defn slurp-json [f]
@@ -8,10 +9,10 @@
 (defaction hello_world [_]
   (-> (slurp-json "https://dbas.cs.uni-duesseldorf.de/api/hello")
       (:message)
-      (ai/simple-speech-response)))
+      (agent/simple-speech-response)))
 
 (defaction echo_name [request-body]
-  (ai/simple-speech-response "Hello " (get-in request-body [:result :parameters :given-name])))
+  (agent/simple-speech-response "Hello " (get-in request-body [:result :parameters :given-name])))
 
 (defaction how_long [request-body]
-  (ai/simple-speech-response "The word is " (count (get-in request-body [:result :parameters :word])) " characters long."))
+  (agent/simple-speech-response "The word is " (count (get-in request-body [:result :parameters :word])) " characters long."))
