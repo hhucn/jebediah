@@ -26,13 +26,13 @@
 (defaction dbas.list-discussions [request]
   (case (ai/get-service request)
     :facebook (fb/simple-list-response true (map fb-list-entry-button
-                                              (take 3 (:issues (dbas/slurp-dbas "query{issues{title, subtitle:info}}")))))
+                                                 (take 3 (:issues (dbas/query "query{issues{title, subtitle:info}}")))))
     (agent/simple-speech-response "The topics are: " (str/join ", "
                                                             (take 3 (map :title (dbas/get-issues)))) ".")))
 
 
 (defaction dbas.list-discussions.more [request]
-  (let [more-topics (drop 3 (:issues (dbas/slurp-dbas "query{issues{title, subtitle:info}}")))
+  (let [more-topics (drop 3 (:issues (dbas/query "query{issues{title, subtitle:info}}")))
         topic-count (count more-topics)]
     (case (ai/get-service request)
       :facebook (cond
@@ -46,7 +46,7 @@
 
 (defaction dbas.info-discussion [request]
   (let [requested-topic (get-in request [:result :parameters :discussion-topic])
-        topic (first (filter #(= (:slug %) requested-topic) (:issues (dbas/slurp-dbas "query{issues{title, slug, info}}"))))]
+        topic (first (filter #(= (:slug %) requested-topic) (:issues (dbas/query "query{issues{title, slug, info}}"))))]
     (agent/simple-speech-response
       (if (some? topic)
         (format "Here are more informations about %s: %s" (:title topic) (:info topic))

@@ -9,15 +9,15 @@
       (slurp)
       (json/read-str :key-fn keyword)))
 
-(defn slurp-dbas [& qs]
+(defn query [& qs]
   (slurp-json (str dbas-base (str/replace (str/join qs) #"\s" ""))))
 
 (defn get-issues
   "Return all issues from dbas or nil." []
-  (let [response (slurp-dbas "query{issues{uid, title}}")]
+  (let [response (query "query{issues{uid, title}}")]
     (sort-by :uid (get-in response [:issues]))))
 
 (defn get-positions-for-issue [slug]
-  (let [response (slurp-dbas "query{issue(slug:\"" slug "\"){statements(isStartpoint: true){textversions{content}}}}")]
+  (let [response (query "query{issue(slug:\"" slug "\"){statements(isStartpoint: true){textversions{content}}}}")]
     (map #(get-in % [:textversions :content]) (get-in response [:issue :statements]))))
 
