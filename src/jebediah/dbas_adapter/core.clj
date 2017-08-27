@@ -14,10 +14,13 @@
 
 (defn get-issues
   "Return all issues from dbas or nil." []
-  (let [response (query "query{issues{uid, title}}")]
-    (sort-by :uid (get-in response [:issues]))))
+  (let [response (query "query{issues{uid, title, slug}}")]
+    (sort-by :uid (:issues response))))
 
 (defn get-positions-for-issue [slug]
   (let [response (query "query{issue(slug:\"" slug "\"){statements(isStartpoint: true){textversions{content}}}}")]
     (map #(get-in % [:textversions :content]) (get-in response [:issue :statements]))))
 
+(defn is-issue? [issues topic]
+  (let [slugs (map :slug issues)]
+    (some #{topic} slugs)))

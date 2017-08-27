@@ -4,12 +4,16 @@
             [apiai.integrations.facebook :as fb]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
-            [jebediah.dbas-adapter.core :as dbas]))
+            [jebediah.dbas-adapter.core :as dbas]
+            [clj-fuzzy.metrics :as fuzzy-metrics]))
 
-;; (ai/update-entities! "discussion-topic" (mapv (fn [v] {:value v :synonyms []}) sample-discussions))
+(defn update-topics! []
+  (ai/update-entity! "discussion-topic"
+                     (mapv (fn [{:keys [value synonym]}] {:value value :synonyms [synonym]})
+                           (:issues (dbas/query "query{issues{synonym:title, value:slug}}")))))
 
 (defaction dbas.start-discussions [request]
-  (agent/simple-speech-response "Ok, lets talk about " (get-in (log/spy :info (ai/get-contexts request)) [:discussion :parameters :discussion-topic.original])
+  (agent/simple-speech-response "Ok, lets talk about " (get-in (log/spy :info (ai/get-contexts request)) [:discussion :parameters :discussion-topic-name])
                                 ". Maybe ask for some positions, while I'm developing new skills?"))
 
 (defn fb-list-entry-button [entry]
@@ -28,7 +32,7 @@
     :facebook (fb/simple-list-response true (map fb-list-entry-button
                                                  (take 3 (:issues (dbas/query "query{issues{title, subtitle:info}}")))))
     (agent/simple-speech-response "The topics are: " (str/join ", "
-                                                            (take 3 (map :title (dbas/get-issues)))) ".")))
+                                                            (take 3 (map :title (:issues (dbas/query "query{issues{title}}"))))) ".")))
 
 
 (defaction dbas.list-discussions.more [request]
@@ -59,5 +63,36 @@
       (fb/simple-list-response false (map #(fb-list-entry {:title % :subtitle " "}) (take 3 (dbas/get-positions-for-issue (get-in topic [:parameters :discussion-topic])))))
       (agent/simple-speech-response
         "Some positions for "
-        (get-in topic [:parameters :discussion-topic.original]) " are: "
+        (get-in topic [:parameters :discussion-topic-original]) " are: "
         (str/join ", " (take 3 (dbas/get-positions-for-issue (get-in topic [:parameters :discussion-topic]))))))))
+
+(defaction dbas.start-without-topic [request]
+  (agent/simple-speech-response "blabla"))
+
+(defaction dbas.search-for-issue [request]
+  (let [topic (get-in request [:result :parameters :discussion-topic])
+        issues (:issues (dbas/query "query{issues{uid, title, slug}}"))]
+    (if (dbas/is-issue? topic issues)
+      (agent/simple-speech-response "Yes!")
+      (agent/simple-speech-response "No, but you can discuss about "
+                                    (->> issues
+                                         (sort-by #(fuzzy-metrics/levenshtein topic (:title %)))
+                                         (log/spy :info)
+                                         (first)
+                                         (log/spy :info)
+                                         (:title)) "."))))
+
+
+(defaction dbas.start-invalid-discussion [request]
+  (let [topic (get-in request [:result :parameters :invalid-discussion-topic])
+        issues (:issues (dbas/query "query{issues{uid, title, slug}}"))
+        nearest-topic (->> issues
+                           (sort-by #(fuzzy-metrics/levenshtein topic (:title %)))
+                           (log/spy :info)
+                           (first))]
+    (assoc (agent/simple-speech-response (format "There is no issue %s. Would you like to talk about %s?" topic (:title nearest-topic)))
+        :contextOut
+        [{:name "letstalkaboutinvalidtopic-followup"
+          :parameters {:discussion-topic (:slug nearest-topic)
+                       :discussion-topic-name (:title nearest-topic)}
+          :lifespan 2}])))
