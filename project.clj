@@ -15,7 +15,7 @@
             [lein-kibit "0.1.5"]
             [jonase/eastwood "0.2.4"]
             [lein-ancient "0.6.10"]]
-  :source-paths ["src" "lib/apiai-clj/src"]
+  :source-paths ["src"]
   :ring {:handler jebediah.handler/app}
   :profiles {:dev {:dependencies [[javax.servlet/servlet-api "2.5"]
                                   [ring/ring-mock "0.3.1"]]}})
