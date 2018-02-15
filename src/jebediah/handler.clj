@@ -8,7 +8,8 @@
             [clojure.tools.logging :as log]
             [apiai.core :as ai]
             [jebediah.hello]
-            [jebediah.actions.dbas]))
+            [jebediah.actions.dbas]
+            [jebediah.actions.dbas-auth]))
 
 (defroutes app-routes
   (GET "/" [] "Hello World")
