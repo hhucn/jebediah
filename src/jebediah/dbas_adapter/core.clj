@@ -5,8 +5,7 @@
             [clj-fuzzy.metrics :as fuzzy-metrics]
             [clojure.tools.logging :as log]))
 
-(def base "http://0.0.0.0:4284")
-;(def base (or (System/getenv "DBAS_BASE") "https://dbas.cs.uni-duesseldorf.de"))
+(def base (or (System/getenv "DBAS_BASE") "https://dbas.cs.uni-duesseldorf.de"))
 (def dbas-base (str base "/api/v2/query?q="))
 (def api-base (str base "/api"))
 
