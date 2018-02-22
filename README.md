@@ -1,3 +1,4 @@
+[![Docker Build Status](https://img.shields.io/docker/build/mroerni/jebediah.svg)](https://hub.docker.com/r/mroerni/jebediah/)
 # Jebediah
 
 Jebediah is a virtual assistant frontend for [D-BAS].
