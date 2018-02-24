@@ -24,8 +24,9 @@
   "Gets the fulfillment part of the api.ai request or nil."
   [request] (get-in request [:result :fulfillment]))
 
-(defn fulfillment-empty? [request]
+(defn fulfillment-empty?
   "True if speech is empty or there is no fulfillment"
+  [request]
   (blank? (get-in request [:result :fulfillment :speech])))
 
 (defn request [body]
@@ -33,13 +34,15 @@
    :content-type :json
    :body (json/write-str body)})
 
-(defn update-entity! [name entries]
+(defn update-entity!
   "Updates an entity on api.ai"
+  [name entries]
   (client/put (str apiai-base "/entities/" name "/entries") (request entries)))
 
-(defn remove-entity! [name]
+(defn remove-entity!
   "Remove an entity from api.ai.
    This won't work if the entity is in use in any intent."
+  [name]
   (client/delete (str apiai-base "/entities/" name) {:headers {:Authorization [(str "Bearer" dev-token)]}}))
 
 (defn get-contexts [request]
