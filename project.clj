@@ -11,10 +11,7 @@
                  [org.clojure/data.json "0.2.6"]
                  [clj-http "3.7.0"]
                  [clj-fuzzy "0.4.0"]]
-  :plugins [[lein-ring "0.9.7"]
-            [lein-kibit "0.1.5"]
-            [jonase/eastwood "0.2.4"]
-            [lein-ancient "0.6.10"]]
+  :plugins [[lein-ring "0.9.7"]]
   :source-paths ["src"]
   :ring {:handler jebediah.handler/app}
   :profiles {:dev {:dependencies [[javax.servlet/servlet-api "2.5"]
