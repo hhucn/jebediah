@@ -1,7 +1,6 @@
 (ns jebediah.actions.dbas-auth
-  (:require [apiai.core :as ai :refer [defaction]]
-            [apiai.integrations.agent :as agent]
-            [apiai.integrations.facebook :as fb]
+  (:require [dialogflow.v2beta.core :as dialogflow :refer [defaction]]
+            [dialogflow.v2beta.integrations.agent :as agent]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [jebediah.dbas-adapter.core :as dbas]
@@ -20,10 +19,9 @@
 
 
 (defaction dbas-auth.logged-in [{{service :source
-                                  {{app-id :id } :recipient
-                                   {user-id :id} :sender}
-                                  :data}
-                                 :originalRequest :as request}]
+                                  {{app-id :id}  :recipient
+                                   {user-id :id} :sender} :payload}
+                                 :originalDetectIntentRequest :as request}]
   (agent/speech
     (if (= service "facebook")
       (if-let [nickname (log/spy :info (query-for-nickname service app-id user-id))]

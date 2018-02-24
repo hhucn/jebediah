@@ -43,7 +43,6 @@
         most-likely-topic (->> issues
                                (map #(hash-map :topic % :distance (fuzzy-metrics/levenshtein topic (:title %))))
                                (sort-by :distance)
-                               (log/spy :info)
                                (first))]
     (when (>= threshold (:distance most-likely-topic))
       (:topic most-likely-topic))))

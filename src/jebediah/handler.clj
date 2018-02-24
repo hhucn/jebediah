@@ -6,7 +6,7 @@
             [ring.logger :as logger]
             [ring.util.response :refer [response]]
             [clojure.tools.logging :as log]
-            [apiai.core :as ai]
+            [dialogflow.v2beta.core :as ai]
             [jebediah.hello]
             [jebediah.actions.dbas]
             [jebediah.actions.dbas-auth]))
@@ -16,6 +16,7 @@
   (POST "/" request (response (log/spy :info (ai/dispatch-action (log/spy :info (:body request))))))
   (route/not-found "Not Found"))
 
+(println (keys (methods ai/dispatch-action)))
 
 (def app
   (-> app-routes
