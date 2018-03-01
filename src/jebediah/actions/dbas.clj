@@ -77,8 +77,7 @@
                        (:info topic)))))
 
 
-(defaction dbas.show-positions-with-topic
-  [request]
+(defaction dbas.show-positions-with-topic [request]
   (let [topic (:parameters (dialogflow/get-context request "topic"))
         positions (map #(get-in % [:textversions :content]) (dbas/get-positions-for-issue (:slug topic)))]
     (agent/speech
@@ -88,7 +87,7 @@
         :payload  (fb/rich-list (map #(fb/list-entry {:title % :subtitle " "}) (take 3 positions)))}])))
 
 
-(defaction dbas.search-for-issue [{{{topic :discussion-topic} :parameters} :result :as request}]
+(defaction dbas.search-for-issue [{{{topic :topic} :parameters} :queryResult :as request}]
   (let [issues (:issues (dbas/query "query{issues{uid, title, slug}}"))]
     (if-let [corrected-topic (dbas/corrected-topic issues topic)]
       (agent/speech "Yes!"
@@ -98,11 +97,10 @@
       (agent/speech (format "No, but you can discuss about %s."
                             (->> issues
                                  (sort-by #(fuzzy-metrics/levenshtein topic (:title %))) ; TODO replace with elastic search
-                                 (first)
-                                 (:title)))))))
+                                 first :title))))))
 
 
-(defaction dbas.thoughts-about-topic [request]
+(defaction dbas.thoughts-about-topic [{{{topic :topic} :parameters} :queryResult :as request}]
   (let [topic (dialogflow/get-context request "discussion")
         slug (get-in request [:result :parameters :discussion-topic])
         statement (first (dbas/get-positions-for-issue slug))]
@@ -112,14 +110,11 @@
                                    :lifespanCount 3})))
 
 
-(defaction dbas.opinion-about-topic [request]
-  (let [topic (dialogflow/get-context request "discussion")
-        slug (get-in topic [:parameters :discussion-topic])
-        position (get-in topic [:parameters :position])
-        reason (get-in topic [:parameters :reason])
-        positions (set (dbas/get-positions-for-issue (log/spy :info slug)))]
-    (if (contains? positions position)                      ; TODO check if contains position but not with the reason
-      (agent/speech "But what about that other thing?")
-      (do
-        (log/info slug position reason)
-        (dbas/add-position slug position reason)))))
+(defaction dbas.opinion-about-topic [{{parameters :parameters} :queryResult :as request}]
+  (let [topic (dialogflow/get-context request :topic)
+        position (dialogflow/get-context request :position)
+        opinion (= (:opinion parameters) "agree")
+        reason (:reason parameters)]
+    (agent/speech (str "Another user thinks that: Bla! "
+                       "What do you think about this?"))))
+
