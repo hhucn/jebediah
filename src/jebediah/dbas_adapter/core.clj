@@ -15,7 +15,7 @@
       (json/read-str :key-fn keyword)))
 
 (defn query [& qs]
-  (slurp-json (str dbas-base (str/replace (str/join qs) #"\s" ""))))
+  (slurp-json (str dbas-base (str/replace (str/join qs) #"[\s\r\n]+" ""))))
 
 (defn get-issues
   "Return all issues from dbas or nil." []

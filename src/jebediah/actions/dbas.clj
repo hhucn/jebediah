@@ -9,12 +9,12 @@
             [clojure.data.json :as json]))
 
 (defaction dbas.start-discussions [{{{topic :topic} :parameters} :queryResult session :session}]
-  (let [issues (:issues (dbas/query "query{issues{title, slug, statements(isStartpoint:true,isDisabled:false){uid, textversions{content}}}}"))]
+  (let [issues (:issues (dbas/query "{issues{title, slug, positions{uid, text}}}"))]
     (if-let [corrected-topic (dbas/corrected-topic issues topic)]
       (let [topic-detail (first (filter #(= (:slug corrected-topic) (:slug %)) issues))
-            position (rand-nth (:statements topic-detail))]
+            position (rand-nth (:positions topic-detail))]
         (agent/speech (str "Ok, let us talk about " (:title corrected-topic) ". "
-                           "Do you think " (get-in position [:textversions :content]) "?")
+                           "Do you think " (:text position) "?")
                       :outputContexts [{:name          (str session "/contexts/" "topic")
                                         :parameters    corrected-topic
                                         :lifespanCount 5}
@@ -60,7 +60,7 @@
                             (take 3 more-topics)))}]))))
 
 
-(defaction dbas.info-discussion [{{{topic :topic} :parameters} :result :as request}]
+(defaction dbas.info-discussion [{{{topic :topic} :parameters} :queryResult :as request}]
   (let [issues (:issues (dbas/query "query{issues{uid, title, slug, info}}"))]
     (if-let [corrected-topic (dbas/corrected-topic issues topic)]
       (agent/speech (str (format "Here are more informations about %s: " (:title corrected-topic))
@@ -71,7 +71,7 @@
       (agent/speech (str "Sorry there is no such topic" topic)))))
 
 
-(defaction dbas.info-discussion-with-topic [{{{slug :slug} :parameters} :result}]
+(defaction dbas.info-discussion-with-topic [{{{slug :slug} :parameters} :queryResult}]
   (let [topic (:issues (dbas/query (str "query{issue(uid:" slug "){title, slug, info}}")))]
     (agent/speech (str (format "Here are more informations about %s: " (:title topic))
                        (:info topic)))))
@@ -112,9 +112,30 @@
 
 (defaction dbas.opinion-about-topic [{{parameters :parameters} :queryResult :as request}]
   (let [topic (dialogflow/get-context request :topic)
-        position (dialogflow/get-context request :position)
+        position (:parameters (dialogflow/get-context request :position))
         opinion (= (:opinion parameters) "agree")
-        reason (:reason parameters)]
-    (agent/speech (str "Another user thinks that: Bla! "
+        reason (:reason parameters)
+        attacks (fn [position opinion]
+                  (->> (dbas/query
+                         "{statement(uid: " (:uid position) ") {
+                                            text,
+                                            arguments(isSupportive: " opinion ") {
+                                              premisegroups {
+                                                statements {
+                                                  text
+                                                }
+                                              }
+                                            }
+                                          }}")
+
+                       :statement
+                       :arguments
+                       (map #(->> %
+                                  :premisegroups
+                                  :statements
+                                  (map :text)
+                                  (str/join " and ")))))]
+
+    (agent/speech (str "Another user thinks that " (rand-nth (log/spy :info (attacks position opinion))) ". "
                        "What do you think about this?"))))
 
