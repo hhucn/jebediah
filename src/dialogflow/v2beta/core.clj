@@ -15,7 +15,7 @@
      ~@body))
 
 (defn gen-context [request context]
-  (str (:session request) "/contexts/" context))
+  (str (:session request) "/contexts/" (name context)))
 
 (defn get-context [request context]
   (let [cs (get-in request [:queryResult :outputContexts])]
