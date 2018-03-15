@@ -2,15 +2,15 @@
 
 (defn list-entry-postback-button
   [title subtitle payload]
-  {:title title
+  {:title    title
    :subtitle subtitle
-   :buttons [{:type "postback"
-              :title "This!"
-              :payload payload}]})
+   :buttons  [{:type    "postback"
+               :title   "This!"
+               :payload payload}]})
 
 
 (defn list-entry [entry]
-  {:title (:title entry)
+  {:title    (:title entry)
    :subtitle (:subtitle entry)})
 
 (defn rich-list
@@ -20,10 +20,10 @@
     {:attachment {:type "template"
                   :payload
                         (merge
-                          {:template_type "list"
+                          {:template_type     "list"
                            :top_element_style "compact"
-                           :elements (vec entries)}
+                           :elements          (vec entries)}
                           (when more?
-                            {:buttons [{:title "View More"
-                                        :type "postback"
+                            {:buttons [{:title   "View More"
+                                        :type    "postback"
                                         :payload "more"}]}))}}}))

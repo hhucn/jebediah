@@ -33,8 +33,8 @@
 (defn add-position [slug statement reason]
   (let [route "/add/start_statement"]
     (client/post (str api-base route) {:body (json/write-str {:statement statement
-                                                              :reason reason
-                                                              :slug slug})})))
+                                                              :reason    reason
+                                                              :slug      slug})})))
 
 (defn corrected-topic
   "If there is a matching topic, then this topic will be returned, else nil"

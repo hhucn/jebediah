@@ -1,27 +1,36 @@
 (ns jebediah.handler
-  (:require [compojure.core :refer [defroutes GET POST]]
-            [compojure.route :as route]
-            [ring.middleware.defaults :refer [wrap-defaults site-defaults]]
-            [ring.middleware.json :refer [wrap-json-response wrap-json-body]]
+  (:require [compojure.api.sweet :refer :all]
+            [ring.middleware.basic-authentication :refer [wrap-basic-authentication]]
             [ring.logger :as logger]
-            [ring.util.response :refer [response]]
+            [ring.util.http-response :refer :all]
             [clojure.tools.logging :as log]
-            [dialogflow.v2beta.core :as ai]
+            [clojure.string :refer [join]]
+            [dialogflow.v2beta.core :as dialogflow]
             [jebediah.hello]
             [jebediah.actions.dbas]
             [jebediah.actions.dbas-auth]))
 
-(defroutes app-routes
-  (GET "/" [] "Hello World")
-  (POST "/" request (response (log/spy :info (ai/dispatch-action (log/spy :info (:body request))))))
-  (route/not-found "Not Found"))
+(defonce basic-auth {:name (or (System/getenv "AUTH_USER") "dialogflow")
+                     :pass (or (System/getenv "AUTH_PASS") "dialogflow")})
 
-(println (keys (methods ai/dispatch-action)))
+(defn authenticated? [name pass]
+  (and (= name (:name basic-auth))
+       (= pass (:pass basic-auth))))
+
+(def app-routes
+  (api
+    (GET "/" [] (ok "<iframe style=\"position:fixed; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%; border:none; margin:0; padding:0; overflow:hidden; z-index:999999;\" src=\"https://console.dialogflow.com/api-client/demo/embedded/jebediah\"></iframe>"))
+    (POST "/" request
+      :middleware [[wrap-basic-authentication authenticated?]]
+      (->> (:body-params request)
+           (log/spy :info)
+           (dialogflow/dispatch-action)
+           (log/spy :info)
+           ok))))
+
+
+(log/infof "Enabled actions:\n%s" (join \newline (keys (methods dialogflow/dispatch-action))))
 
 (def app
   (-> app-routes
-      (logger/wrap-with-logger)
-      (wrap-defaults (assoc-in site-defaults [:security :anti-forgery] false))
-      (wrap-json-response)
-      (wrap-json-body {:keywords? true :pretty? true})))
-
+      (logger/wrap-with-logger)))
