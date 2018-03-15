@@ -10,8 +10,8 @@
             [jebediah.actions.dbas]
             [jebediah.actions.dbas-auth]))
 
-(defonce basic-auth {:name (or (System/getenv "AUTH_USER") "dialogflow")
-                     :pass (or (System/getenv "AUTH_PASS") "dialogflow")})
+(defonce basic-auth {:name (System/getenv "AUTH_USER")
+                     :pass (System/getenv "AUTH_PASS")})
 
 (defn authenticated? [name pass]
   (and (= name (:name basic-auth))
@@ -29,8 +29,9 @@
            ok))))
 
 
+(when-not (and (:name basic-auth) (:name basic-auth))
+  (log/warn "You didn't define any authentication!"))
+
 (log/infof "Enabled actions:\n%s" (join \newline (keys (methods dialogflow/dispatch-action))))
 
-(def app
-  (-> app-routes
-      (logger/wrap-with-logger)))
+(def app (logger/wrap-with-logger app-routes))
