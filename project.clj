@@ -6,7 +6,7 @@
                  [org.clojure/tools.logging "0.4.0"]
                  [metosin/compojure-api "2.0.0-alpha19"]
                  [ring-basic-authentication "1.0.5"]
-                 [ring-logger "0.7.7"]
+                 [ring-logger "1.0.0"]
                  [org.clojure/data.json "0.2.6"]
                  [clj-http "3.8.0"]
                  [clj-fuzzy "0.4.1"]]
