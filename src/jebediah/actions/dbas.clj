@@ -26,7 +26,7 @@
                                  (sort-by #(fuzzy-metrics/levenshtein topic %)) ; TODO replace with elastic search
                                  (first))]
         (agent/speech (format "Sorry there is no such topic, but we can talk about %s" suggested-title)
-                      :outputContexts [{:name          (str session "/contexts/" "Letustalkabouttopic-followup")
+                      :outputContexts [{:name          (str session "/contexts/" "suggested-topic")
                                         :parameters    {:suggested-title suggested-title}
                                         :lifespanCount 2}])))))
 
