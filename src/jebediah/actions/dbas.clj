@@ -25,13 +25,18 @@
                                  (map :title)
                                  (sort-by #(fuzzy-metrics/levenshtein topic %)) ; TODO replace with elastic search
                                  (first))]
-        (agent/speech (format "Sorry there is no such topic, but we can talk about %s" suggested-title)
+        (agent/speech (format "Sorry there is no such topic, but we could talk about %s" suggested-title)
                       :outputContexts [{:name          (str session "/contexts/" "suggested-topic")
                                         :parameters    {:suggested-title suggested-title}
-                                        :lifespanCount 2}])))))
+                                        :lifespanCount 2}
+                                       ;; Reset contexts
+                                       {:name (str session "/contexts/" "topic")
+                                        :lifespanCount 0}
+                                       {:name (str session "/contexts/" "position")
+                                        :lifespanCount 0}])))))
 
 
-(defaction dbas.list-discussions [request]
+(defaction dbas.list-discussions [_]
   (let [topics (:issues (dbas/query "query{issues{title, subtitle:info}}"))]
     (agent/speech
       (format "The topics are: %s." (str/join ", " (take 3 (map :title topics))))
@@ -43,7 +48,7 @@
                     true)}])))
 
 
-(defaction dbas.list-discussions.more [request]
+(defaction dbas.list-discussions.more [_]
   (let [more-topics (drop 3 (:issues (dbas/query "query{issues{title, subtitle:info}}")))]
     (case (count more-topics)
       0 (agent/speech "Sorry, but there are no more topics.")
