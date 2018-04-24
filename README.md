@@ -5,7 +5,7 @@ Jebediah is a virtual assistant frontend for [D-BAS].
 
 The assistant is based on Googles [Dialogflow][] for natural language processing and user intent recognition.
 
-
+Try the [demo][Jebediah-Demo]! (For example: "Let us talk about cat or dog!" )
 
 ## Services
 
@@ -49,3 +49,4 @@ Copyright © 2018 Björn Ebbinghaus
 
 [D-BAS]: https://dbas.cs.uni-duesseldorf.de/
 [Dialogflow]: https://dialogflow.com/
+[Jebediah-Demo]: https://console.dialogflow.com/api-client/demo/embedded/jebediah
