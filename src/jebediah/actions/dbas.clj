@@ -20,20 +20,23 @@
               :others-think             "Others think, that %s."
               :another-thinks           "Another user thinks that %s. What do you think about this?"
               :button-let-us-talk-about "Let us talk about %s"
+              :first-one-in-topic       "You are actually the first one in this topic and I'm can't handle this.. yet"
               :conjunction              "and"})
 
 (defaction dbas.start-discussions [{{{topic :topic} :parameters} :queryResult session :session}]
   (let [issues (:issues (dbas/query "{issues{title, slug, positions{uid, text}}}"))]
     (if-let [corrected-topic (dbas/corrected-topic issues topic)]
-      (let [topic-detail (first (filter #(= (:slug corrected-topic) (:slug %)) issues))
-            position (rand-nth (:positions topic-detail))]
-        (agent/speech (format (strings :talk-about) (:title corrected-topic) (:text position))
-                      :outputContexts [{:name          (str session "/contexts/" "topic")
-                                        :parameters    corrected-topic
-                                        :lifespanCount 5}
-                                       {:name          (str session "/contexts/" "position")
-                                        :parameters    position
-                                        :lifespanCount 5}]))
+      (let [topic-detail (first (filter #(= (:slug corrected-topic) (:slug %)) issues))]
+        (if (pos? (count (:positions topic-detail)))
+          (let [position (rand-nth (:positions topic-detail))]
+            (agent/speech (format (strings :talk-about) (:title corrected-topic) (:text position))
+                          :outputContexts [{:name          (str session "/contexts/" "topic")
+                                            :parameters    corrected-topic
+                                            :lifespanCount 5}
+                                           {:name          (str session "/contexts/" "position")
+                                            :parameters    position
+                                            :lifespanCount 5}]))
+          (agent/speech (strings :first-one-in-topic))))
       (let [suggested-title (->> issues
                                  (map :title)
                                  (sort-by #(fuzzy-metrics/levenshtein topic %)) ; TODO replace with elastic search
