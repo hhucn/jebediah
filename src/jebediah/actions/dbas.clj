@@ -38,7 +38,7 @@
                                  (map :title)
                                  (sort-by #(fuzzy-metrics/levenshtein topic %)) ; TODO replace with elastic search
                                  (first))]
-        (agent/speech (format (strings :no-topic-but suggested-title))
+        (agent/speech (format (strings :no-topic-but) suggested-title)
                       :outputContexts [{:name          (str session "/contexts/" "suggested-topic")
                                         :parameters    {:suggested-title suggested-title}
                                         :lifespanCount 2}
@@ -52,7 +52,7 @@
 (defaction dbas.list-discussions [_]
   (let [topics (:issues (dbas/query "query{issues{title, subtitle:info}}"))]
     (agent/speech
-      (format (strings :list-topics (str/join ", " (take 3 (map :title topics)))))
+      (format (strings :list-topics) (str/join ", " (take 3 (map :title topics))))
       :fulfillmentMessages
       [{:platform "FACEBOOK"
         :payload  (fb/rich-list
