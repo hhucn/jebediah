@@ -1,5 +1,7 @@
 (ns dialogflow.v2beta.core
-  (:require [dialogflow.v2beta.integrations.agent :as agent]))
+  (:require [dialogflow.v2beta.integrations.agent :as agent]
+            [clojure.spec.alpha :as s]
+            [jebediah.dialogflow-spec]))
 
 (defmulti dispatch-action
           "Executes an action"
@@ -20,3 +22,10 @@
 (defn get-context [request context]
   (let [cs (get-in request [:queryResult :outputContexts])]
     (first (filter #(= (gen-context request context) (:name %)) cs))))
+
+
+;;;; Specs
+
+(s/fdef dispatch-action
+        :args :jebediah.dialogflow-spec/Webhook-request
+        :ret :jebediah.dialogflow-spec/Webhook-response)
