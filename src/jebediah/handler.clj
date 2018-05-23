@@ -14,8 +14,10 @@
                      :pass (System/getenv "AUTH_PASS")})
 
 (defn authenticated? [name pass]
-  (and (= name (:name basic-auth))
-       (= pass (:pass basic-auth))))
+  (if (and (:name basic-auth) (:pass basic-auth))
+    (and (= name (:name basic-auth))
+         (= pass (:pass basic-auth)))
+    true))
 
 (def app-routes
   (api
