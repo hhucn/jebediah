@@ -16,12 +16,22 @@
   `(defmethod dispatch-action ~(str name) ~params
      ~@body))
 
-(defn gen-context [request context]
+
+
+(defn gen-context-name [request context]
   (str (:session request) "/contexts/" (name context)))
+
+(defn context [request name parameters lifespan]
+  {:name          (gen-context-name request name)
+   :parameters    parameters
+   :lifespanCount lifespan})
+
+(defn reset-context [request name]
+  (context request name {} 0))
 
 (defn get-context [request context]
   (let [cs (get-in request [:queryResult :outputContexts])]
-    (first (filter #(= (gen-context request context) (:name %)) cs))))
+    (first (filter #(= (gen-context-name request context) (:name %)) cs))))
 
 
 ;;;; Specs

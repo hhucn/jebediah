@@ -24,7 +24,7 @@
 (defmethod authenticate-user :default [_] nil)
 (defmethod authenticate-user "facebook" [{{{{page-id :id}  :recipient
                                             {user-id :id} :sender} :payload}
-                                          :originalDetectIntentRequest :as request}]
+                                          :originalDetectIntentRequest}]
   (when-let [nickname (auth/query-for-nickname "facebook" page-id user-id)]
    {:service "facebook"
     :nickname nickname
@@ -36,12 +36,11 @@
   (fn [request]
     (if (dialogflow/get-context (:body-params request) "user")
       (handler request)
-      (when-let [auth-user (authenticate-user (:body-params request))]
-        (let [user-context {:name          (dialogflow/gen-context (:body-params request) "user")
-                            :parameters    auth-user
-                            :lifespanCount 20}
+      (if-let [auth-user (authenticate-user (:body-params request))]
+        (let [user-context (dialogflow/context (:body-params request) "user" auth-user 20)
               new-request (update-in request [:body-params :queryResult :outputContexts] conj user-context)]
-          (update (handler new-request) :outputContexts conj user-context))))))
+          (update (handler new-request) :outputContexts conj user-context))
+        (handler request)))))
 
 
 (def app-routes
