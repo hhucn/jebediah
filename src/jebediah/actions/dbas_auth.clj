@@ -4,10 +4,11 @@
             [jebediah.dbas-adapter.auth :as auth]))
 
 
-(defaction dbas-auth.logged-in [{{service :source
-                                  {{app-id :id}  :recipient
-                                   {user-id :id} :sender} :payload}
-                                 :originalDetectIntentRequest}]
+(defaction dbas-auth.logged-in
+  :request {{service :source
+             {{app-id :id}  :recipient
+              {user-id :id} :sender} :payload}
+            :originalDetectIntentRequest}
   (agent/speech
     (if (= service "facebook")
       (if-let [nickname (auth/query-for-nickname service app-id user-id)]
