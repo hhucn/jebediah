@@ -13,21 +13,33 @@
 (defn query [& qs]
   (:body (client/get (str graphql-base (str/replace (str/join qs) #"[\s\r\n]+" "")) {:as :auto})))
 
+(defn- prepend-slash
+  "Prepends a slash, if there isn't. Else justs returns the input"
+  [path]
+  (if-not (= \/ (first path))
+    (str \/ path)
+    path))
+
+(defn- merge-paths
+  "Merges multiple paths behind a base."
+  [base & paths]
+  (str base (str/join (map prepend-slash paths))))
+
 (defn api-query
   ([path]
-   (:body (client/get (str api-base path) {:as :auto})))
+   (:body (client/get (merge-paths api-base path) {:as :auto})))
   ([path nickname]
    (log/info "GET from:" path "with nickname" nickname)
-   (:body (client/get (str api-base path) {:headers {:X-Authentication (json/write-str {:nickname nickname :token dbas-api-token})}
-                                           :as      :auto}))))
+   (:body (client/get (merge-paths api-base path) {:headers {:X-Authentication (json/write-str {:nickname nickname :token dbas-api-token})}
+                                                   :as      :auto}))))
 
 (defn api-post
   ([path nickname body]
    (log/info "GET to: " path " with " body)
-   (client/post (str api-base path) {:headers      {:X-Authentication (json/write-str {:nickname nickname :token dbas-api-token})}
-                                     :as           :auto
-                                     :content-type :json
-                                     :body         body})))
+   (client/post (merge-paths api-base path) {:headers      {:X-Authentication (json/write-str {:nickname nickname :token dbas-api-token})}
+                                             :as           :auto
+                                             :content-type :json
+                                             :body         body})))
 
 
 (defn get-positions-for-issue [slug]

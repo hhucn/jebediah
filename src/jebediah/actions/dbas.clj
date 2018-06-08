@@ -124,7 +124,6 @@
   (let [nickname (get (:parameters (dialogflow/get-context request :user)) :nickname "anonymous")
         justification-url (->> (dialogflow/get-context request :position)
                                :parameters :url
-                               (str "/")                    ; prefix with slash until I fixed D-BAS
                                #(dbas/api-query % nickname) :attitudes
                                #(% (keyword (:opinion parameters))) :url)
         justifications (:items (dbas/api-query justification-url nickname))
