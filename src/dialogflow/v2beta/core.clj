@@ -1,7 +1,8 @@
 (ns dialogflow.v2beta.core
   (:require [dialogflow.v2beta.integrations.agent :as agent]
             [clojure.spec.alpha :as s]
-            [jebediah.dialogflow-spec]))
+            [jebediah.dialogflow-spec]
+            [clojure.string :as str]))
 
 (defmulti dispatch-action
           "Executes an action"
@@ -33,6 +34,11 @@
   (let [cs (get-in request [:queryResult :outputContexts])]
     (first (filter #(= (gen-context-name request context) (:name %)) cs))))
 
+(defn reset-all-contexts [{{cs :outputContexts} :queryResult :as request}]
+  (->> cs
+       (map :name)
+       (map #(last (str/split % #"/")))
+       (mapv #(reset-context request %))))
 
 ;;;; Specs
 

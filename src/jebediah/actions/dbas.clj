@@ -115,12 +115,9 @@
     (agent/speech (format (strings :others-think) (str statement))
                   :outputContexts [(dialogflow/context request :position {:position-full statement} 3)])))
 
-(defaction reset [{{cs :outputContexts} :queryResult :as request}]
+(defaction reset [request]
   (agent/speech "Ok, let us start anew."
-                :outputContexts (->> cs
-                                     (map :name)
-                                     (map #(last (str/split % #"/")))
-                                     (mapv #(dialogflow/reset-context request %)))))
+                :outputContexts (dialogflow/reset-all-contexts request)))
 
 
 (defaction dbas.opinion-about-topic [{{parameters :parameters} :queryResult :as request}]
