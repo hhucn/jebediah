@@ -25,7 +25,7 @@
 (defmethod authenticate-user "facebook" [{{{{page-id :id}  :recipient
                                             {user-id :id} :sender} :payload}
                                           :originalDetectIntentRequest}]
-  (when-let [nickname (auth/query-for-nickname "facebook" page-id user-id)]
+  (when-let [nickname (auth/query-for-nickname! "facebook" page-id user-id)]
    {:service "facebook"
     :nickname nickname
     :user-id user-id

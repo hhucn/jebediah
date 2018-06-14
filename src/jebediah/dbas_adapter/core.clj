@@ -25,7 +25,7 @@
   [base & paths]
   (str base (str/join (map prepend-slash paths))))
 
-(defn api-query
+(defn api-query!
   ([path]
    (:body (client/get (merge-paths api-base path) {:as :auto})))
   ([path nickname]
@@ -33,9 +33,9 @@
    (:body (client/get (merge-paths api-base path) {:headers {:X-Authentication (json/write-str {:nickname nickname :token dbas-api-token})}
                                                    :as      :auto}))))
 
-(defn api-post
+(defn api-post!
   ([path nickname body]
-   (log/info "GET to: " path " with " body)
+   (log/info "POST to: " path " with " body)
    (client/post (merge-paths api-base path) {:headers      {:X-Authentication (json/write-str {:nickname nickname :token dbas-api-token})}
                                              :as           :auto
                                              :content-type :json
@@ -47,10 +47,10 @@
     (get-in response [:issue :statements])))
 
 (defn get-issues []
-  (api-query "/issues"))
+  (api-query! "/issues"))
 
 (defn get-positions [slug]
-  (api-query (format "/%s" slug)))
+  (api-query! (format "/%s" slug)))
 
 (defn corrected-topic
   "If there is a matching topic, then this topic will be returned, else nil"

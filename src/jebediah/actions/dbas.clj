@@ -42,7 +42,7 @@
 
 (defaction dbas.list-discussions [{{lang :languageCode} :queryResult}]
   (let [topics-to-show 3
-        topics (filter #(= lang (:language %)) (dbas/api-query "/issues"))]
+        topics (filter #(= lang (:language %)) (dbas/api-query! "/issues"))]
     (agent/speech
       (format (strings :list-topics) (str/join ", " (take topics-to-show (map :title topics))))
       :fulfillmentMessages
@@ -54,7 +54,7 @@
 
 
 (defaction dbas.list-discussions.more [{{lang :languageCode} :queryResult}]
-  (let [more-topics (->> (dbas/api-query "/issues")
+  (let [more-topics (->> (dbas/api-query! "/issues")
                          (filter #(= lang (:language %)))
                          (drop 3))]
     (case (count more-topics)
@@ -124,9 +124,9 @@
   (let [nickname (get (:parameters (dialogflow/get-context request :user)) :nickname "anonymous")
         justification-url (->> (dialogflow/get-context request :position)
                                :parameters :url
-                               (#(dbas/api-query % nickname)) :attitudes
+                               (#(dbas/api-query! % nickname)) :attitudes
                                (#(% (keyword (:opinion parameters)))) :url)
-        justifications (:items (dbas/api-query justification-url nickname))
+        justifications (:items (dbas/api-query! justification-url nickname))
         reason (:reason parameters)
         nearest (->> justifications
                      (remove #(= (:url %) "add"))
@@ -136,7 +136,7 @@
         new-statement? (> (:confidence nearest) 0.90)]      ;; do something clever here
 
     (if new-statement?
-      (let [answer (-> (dbas/api-post justification-url nickname {:reason (:reason parameters)}) :bubbles last :text)]
+      (let [answer (-> (dbas/api-post! justification-url nickname {:reason (:reason parameters)}) :bubbles last :text)]
         (agent/speech answer))
-      (let [answer (-> (dbas/api-query (get-in nearest [:statement :url])) nickname :bubbles last :text)]
+      (let [answer (-> (dbas/api-query! (get-in nearest [:statement :url])) nickname :bubbles last :text)]
         (agent/speech answer)))))
