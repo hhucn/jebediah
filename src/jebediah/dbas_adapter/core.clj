@@ -6,7 +6,7 @@
             [clojure.data.json :as json]))
 
 (def base (or (System/getenv "DBAS_BASE") "https://web.dbas.coruscant.cs.uni-duesseldorf.de"))
-(def dbas-api-token (or (System/getenv "DBAS_TOKEN") "e76f7:07e063b1b28437704a1177a41ec271cb3a72ead5b1fc28c7802cac3ccb18d9c0"))
+(def dbas-api-token (or (System/getenv "DBAS_TOKEN") "21786:181bc092438e4154ad5b68821039260922c288055d1ce208cc33a399df358f22"))
 (def graphql-base (str base "/api/v2/query?q="))
 (def api-base (str base "/api"))
 

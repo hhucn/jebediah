@@ -124,8 +124,8 @@
   (let [nickname (get (:parameters (dialogflow/get-context request :user)) :nickname "anonymous")
         justification-url (->> (dialogflow/get-context request :position)
                                :parameters :url
-                               #(dbas/api-query % nickname) :attitudes
-                               #(% (keyword (:opinion parameters))) :url)
+                               (#(dbas/api-query % nickname)) :attitudes
+                               (#(% (keyword (:opinion parameters)))) :url)
         justifications (:items (dbas/api-query justification-url nickname))
         reason (:reason parameters)
         nearest (->> justifications
@@ -138,5 +138,5 @@
     (if new-statement?
       (let [answer (-> (dbas/api-post justification-url nickname {:reason (:reason parameters)}) :bubbles last :text)]
         (agent/speech answer))
-      (let [answer (-> (dbas/api-query (log/spy :info (get-in nearest [:statement :url])) nickname) :bubbles last :text)]
+      (let [answer (-> (dbas/api-query (get-in nearest [:statement :url])) nickname :bubbles last :text)]
         (agent/speech answer)))))
