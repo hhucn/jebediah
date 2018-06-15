@@ -3,7 +3,7 @@
   :url "http://example.com/FIXME"
   :min-lein-version "2.0.0"
   :dependencies [[org.clojure/clojure "1.9.0"]
-                 [org.clojure/tools.logging "0.4.0"]
+                 [com.taoensso/timbre "4.10.0"]
                  [metosin/compojure-api "2.0.0-alpha19"]
                  [ring-basic-authentication "1.0.5"]
                  [ring-logger "1.0.0"]

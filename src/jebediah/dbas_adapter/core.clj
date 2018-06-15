@@ -2,7 +2,7 @@
   (:require [clojure.string :as str]
             [clj-http.client :as client]
             [clj-fuzzy.metrics :as fuzzy-metrics]
-            [clojure.tools.logging :as log]
+            [taoensso.timbre :as log]
             [clojure.data.json :as json]))
 
 (def base (or (System/getenv "DBAS_BASE") "https://web.dbas.coruscant.cs.uni-duesseldorf.de"))

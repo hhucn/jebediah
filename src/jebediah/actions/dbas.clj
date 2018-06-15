@@ -3,7 +3,7 @@
             [dialogflow.v2beta.integrations.agent :as agent]
             [dialogflow.v2beta.integrations.facebook :as fb]
             [clojure.string :as str]
-            [clojure.tools.logging :as log]
+            [taoensso.timbre :as log]
             [jebediah.dbas-adapter.core :as dbas]
             [clj-fuzzy.metrics :as fuzzy-metrics]))
 
@@ -137,6 +137,8 @@
 
     (if new-statement?
       (let [answer (-> (dbas/api-post! justification-url nickname {:reason (:reason parameters)}) :bubbles last :text)]
+        (log/info "New statement:" reason)
         (agent/speech answer))
       (let [answer (-> (dbas/api-query! (get-in nearest [:statement :url])) nickname :bubbles last :text)]
+        (log/info "Matched statement:" reason "as" nearest)
         (agent/speech answer)))))

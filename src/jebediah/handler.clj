@@ -1,15 +1,22 @@
 (ns jebediah.handler
   (:require [compojure.api.sweet :refer :all]
+            [clojure.pprint :refer [pprint]]
             [ring.middleware.basic-authentication :refer [wrap-basic-authentication]]
             [ring.logger :as logger]
             [ring.util.http-response :refer :all]
-            [clojure.tools.logging :as log]
+            [taoensso.timbre :as log]
+            [taoensso.timbre.appenders.core :as appenders]
             [clojure.string :refer [join]]
             [dialogflow.v2beta.core :as dialogflow]
             [jebediah.dbas-adapter.auth :as auth]
             [jebediah.hello]
             [jebediah.actions.dbas]
             [jebediah.actions.dbas-auth]))
+
+(log/merge-config!
+  {:level      :debug
+   :middleware [(fn [data] (update data :vargs (partial mapv #(if (string? %) % (with-out-str (pprint %))))))]
+   :appenders  {:spit (appenders/spit-appender {:fname "./jeb.log"})}})
 
 (defonce basic-auth {:name (System/getenv "AUTH_USER")
                      :pass (System/getenv "AUTH_PASS")})
@@ -52,7 +59,7 @@
       (->> (:body-params request)
            (log/spy :info)
            (dialogflow/dispatch-action)
-           (log/spy :info)
+           (#(do (log/spy :info (into {} %)) %))
            ok))))
 
 
@@ -60,5 +67,7 @@
   (log/warn "You didn't define any authentication!"))
 
 (log/infof "Enabled actions:\n%s" (join \newline (keys (methods dialogflow/dispatch-action))))
+(log/info {:this              ["is" 'some]
+           {:nested #{"map"}} "!"})
 
 (def app (logger/wrap-with-logger app-routes))
