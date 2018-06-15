@@ -29,17 +29,17 @@
   ([path]
    (:body (client/get (merge-paths api-base path) {:as :auto})))
   ([path nickname]
-   (log/info "GET from:" path "with nickname" nickname)
+   (log/debug "GET from:" path "with nickname" nickname)
    (:body (client/get (merge-paths api-base path) {:headers {:X-Authentication (json/write-str {:nickname nickname :token dbas-api-token})}
                                                    :as      :auto}))))
 
 (defn api-post!
   ([path nickname body]
-   (log/info "POST to: " path " with " body)
+   (log/debug "POST to: " path " with " body)
    (client/post (merge-paths api-base path) {:headers      {:X-Authentication (json/write-str {:nickname nickname :token dbas-api-token})}
                                              :as           :auto
                                              :content-type :json
-                                             :body         body})))
+                                             :body         (json/write-str body)})))
 
 
 (defn get-positions-for-issue [slug]
@@ -63,9 +63,10 @@
     (when (>= threshold (:distance most-likely-topic))
       (:topic most-likely-topic))))
 
-(defn sent-similarity [s1 s2]
+(defn sent-similarity
   "How similar is s2 to s1?
   Returns a value bewteen -Infinity and 1. Were 1 denotes equality."
+  [s1 s2]
   (let [l (count s1)
         d (fuzzy-metrics/levenshtein s1 s2)]
     (if (zero? l)
