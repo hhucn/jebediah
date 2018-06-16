@@ -23,16 +23,22 @@
               :first-one-in-topic       "You are actually the first one in this topic and I'm can't handle this.. yet"
               :conjunction              "and"})
 
+(defn- get-nickname [request]
+  (get (:parameters (dialogflow/get-context request :user)) :nickname))
+
 (defaction dbas.start-discussions [{{{natural-topic :topic} :parameters lang :languageCode} :queryResult :as request}]
   (let [{confidence :confidence
          topic      :topic} (first (dbas/natural-topic->nearest-topics natural-topic lang))]
     (if (> confidence 0.9)
       (let [positions (:items (dbas/get-positions (:slug topic)))]
         (if (pos? (count positions))
-          (let [position (rand-nth positions)]
-            (agent/speech (format (strings :talk-about) (:title topic) (str/join (str \space (strings :conjunction) \space) (:texts position)))
+          (let [position (rand-nth positions)
+                text (format (strings :talk-about) (:title topic) (str/join (str \space (strings :conjunction) \space) (:texts position)))]
+            (agent/speech text
                           :outputContexts [(dialogflow/context request "topic" topic 5)
-                                           (dialogflow/context request "position" position 5)]))
+                                           (dialogflow/context request "position" position 5)]
+                          :fulfillmentMessages
+                          [(fb/response-with-quick-replies (fb/text text) (fb/quick-replies "Yes" "No" "I don't know"))]))
           (agent/speech (strings :first-one-in-topic))))
       (agent/speech (format (strings :no-topic-but) (:title topic))
                     :outputContexts [(dialogflow/context request "suggested-topic" {:suggested-title (:title topic)} 2)
@@ -46,11 +52,10 @@
     (agent/speech
       (format (strings :list-topics) (str/join ", " (take topics-to-show (map :title topics))))
       :fulfillmentMessages
-      [{:platform "FACEBOOK"
-        :payload  (fb/rich-list
-                    (mapv #(fb/list-entry-postback-button (:title %) (:summary %) (format (strings :button-let-us-talk-about) (:title %)))
-                          (take topics-to-show topics))
-                    (> (count topics) topics-to-show))}])))
+      [(fb/response (fb/rich-list
+                      (mapv #(fb/list-entry-postback-button (:title %) (:summary %) (format (strings :button-let-us-talk-about) (:title %)))
+                            (take topics-to-show topics))
+                      (> (count topics) topics-to-show)))])))
 
 
 (defaction dbas.list-discussions.more [{{lang :languageCode} :queryResult}]
@@ -63,13 +68,12 @@
       (agent/speech
         (format (strings :n-more-topics) (count more-topics) (str/join ", " (map :title more-topics)))
         :fulfillmentMessages
-        [{:platform "FACEBOOK"
-          :payload  (fb/rich-list
-                      (mapv #(fb/list-entry-postback-button
-                               (:title %)
-                               (:summary %)
-                               (format (strings :button-let-us-talk-about) %))
-                            (take 3 more-topics)))}]))))
+        [(fb/response (fb/rich-list
+                        (mapv #(fb/list-entry-postback-button
+                                 (:title %)
+                                 (:summary %)
+                                 (format (strings :button-let-us-talk-about) %))
+                              (take 3 more-topics))))]))))
 
 
 (defaction dbas.info-discussion [{{{topic :topic} :parameters lang :languageCode} :queryResult :as request}]
@@ -93,8 +97,7 @@
     (agent/speech
       (format (strings :position-list) (:title topic) (str/join ", " (take 3 positions)))
       :fulfillmentMessages
-      [{:platform "FACEBOOK"
-        :payload  (fb/rich-list (map #(fb/list-entry {:title % :subtitle " "}) (take 3 positions)))}])))
+      [(fb/response (fb/rich-list (map #(fb/list-entry {:title % :subtitle " "}) (take 3 positions))))])))
 
 
 (defaction dbas.search-for-issue [{{{topic :topic} :parameters} :queryResult :as request}]
@@ -109,8 +112,7 @@
 
 ; TODO
 (defaction dbas.thoughts-about-topic [{{{topic :topic} :parameters} :queryResult :as request}]
-  (let [topic (dialogflow/get-context request "discussion")
-        slug (get-in request [:result :parameters :discussion-topic])
+  (let [slug (get-in request [:result :parameters :discussion-topic])
         statement (first (dbas/get-positions-for-issue slug))]
     (agent/speech (format (strings :others-think) (str statement))
                   :outputContexts [(dialogflow/context request :position {:position-full statement} 3)])))
