@@ -9,7 +9,6 @@
             [clojure.string :refer [join]]
             [dialogflow.v2beta.core :as dialogflow]
             [jebediah.dbas-adapter.auth :as auth]
-            [jebediah.hello]
             [jebediah.actions.dbas]
             [jebediah.actions.dbas-auth]))
 
@@ -46,7 +45,7 @@
       (if-let [auth-user (authenticate-user (:body-params request))]
         (let [user-context (dialogflow/context (:body-params request) "user" auth-user 20)
               new-request (update-in request [:body-params :queryResult :outputContexts] conj user-context)]
-          (update (handler new-request) :outputContexts conj user-context))
+          (update-in (handler new-request) [:body :outputContexts] conj user-context))
         (handler request)))))
 
 
@@ -67,7 +66,5 @@
   (log/warn "You didn't define any authentication!"))
 
 (log/infof "Enabled actions:\n%s" (join \newline (keys (methods dialogflow/dispatch-action))))
-(log/info {:this              ["is" 'some]
-           {:nested #{"map"}} "!"})
 
 (def app (logger/wrap-with-logger app-routes))
