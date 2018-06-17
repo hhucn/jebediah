@@ -6,7 +6,7 @@
             [clojure.data.json :as json]))
 
 (def base (or (System/getenv "DBAS_BASE") "https://web.dbas.coruscant.cs.uni-duesseldorf.de"))
-(def dbas-api-token (or (System/getenv "DBAS_TOKEN") "21786:181bc092438e4154ad5b68821039260922c288055d1ce208cc33a399df358f22"))
+(def dbas-api-token (or (System/getenv "DBAS_TOKEN") "14f3e:486fbbd337e98d41121bb067ab4ff8db0be276d47f1271e319a0e3b61b11c252"))
 (def graphql-base (str base "/api/v2/query?q="))
 (def api-base (str base "/api"))
 
@@ -30,16 +30,18 @@
    (:body (client/get (merge-paths api-base path) {:as :auto})))
   ([path nickname]
    (log/debug "GET from:" path "with nickname" nickname)
-   (:body (client/get (merge-paths api-base path) {:headers {:X-Authentication (json/write-str {:nickname nickname :token dbas-api-token})}
-                                                   :as      :auto}))))
+   (:body (client/get (merge-paths api-base path) (merge {:as      :auto}
+                                                         (when nickname
+                                                           {:headers {:X-Authentication (json/write-str {:nickname nickname :token dbas-api-token})}}))))))
+
 
 (defn api-post!
   ([path nickname body]
    (log/debug "POST to: " path " with " body)
-   (client/post (merge-paths api-base path) {:headers      {:X-Authentication (json/write-str {:nickname nickname :token dbas-api-token})}
-                                             :as           :auto
-                                             :content-type :json
-                                             :body         (json/write-str body)})))
+   (:body (client/post (merge-paths api-base path) {:headers      {:X-Authentication (json/write-str {:nickname nickname :token dbas-api-token})}
+                                                    :as           :auto
+                                                    :content-type :json
+                                                    :body         (json/write-str body)}))))
 
 
 (defn get-positions-for-issue [slug]
