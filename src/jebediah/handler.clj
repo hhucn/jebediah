@@ -39,13 +39,20 @@
 
 
 (defn wrap-with-user-resolving [handler]
+  "Wraps the handler with user resolving.
+   Tries to resolve the user against the eauth backend.
+   If it succeeds, the inforamtions in eauth are stored in the user context.
+
+   Skips if the user context is already available"
   (fn [request]
     (if (dialogflow/get-context (:body-params request) "user")
       (handler request)
       (if-let [auth-user (authenticate-user (:body-params request))]
-        (let [user-context (dialogflow/context (:body-params request) "user" auth-user 20)
-              new-request (update-in request [:body-params :queryResult :outputContexts] conj user-context)]
-          (update-in (handler new-request) [:body :outputContexts] conj user-context))
+        (let [user-context (dialogflow/context (:body-params request) "user" auth-user 20)]
+          (-> request
+              (update-in [:body-params :queryResult :outputContexts] conj user-context)
+              handler
+              (update-in [:body :outputContexts] conj user-context)))
         (handler request)))))
 
 
