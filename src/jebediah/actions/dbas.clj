@@ -38,7 +38,7 @@
                           :outputContexts [(dialogflow/context request "topic" topic 5)
                                            (dialogflow/context request "position" position 5)]
                           :fulfillmentMessages
-                          [(fb/response-with-quick-replies (fb/text text) (fb/quick-replies "Yes" "No" "I don't know"))]))
+                          [(fb/response-with-quick-replies (fb/text text) (fb/quick-replies "Yes" "No"))])) ; "I don't know"))]))
           (agent/speech (strings :first-one-in-topic))))
       (agent/speech (format (strings :no-topic-but) (:title topic))
                     :outputContexts [(dialogflow/context request "suggested-topic" {:suggested-title (:title topic)} 2)
@@ -121,26 +121,70 @@
   (agent/speech "Ok, let us start anew."
                 :outputContexts (dialogflow/reset-all-contexts request)))
 
+(defn- calculate-similaritys [justifications reason]
+  (map #(hash-map
+          :statement %
+          :confidence (dbas/sent-similarity (str/join (str \space (strings :conjunction) \space) (:texts %)) reason))
+       justifications))
 
-(defaction dbas.opinion-about-topic [{{parameters :parameters} :queryResult :as request}]
-  (let [nickname (get (:parameters (dialogflow/get-context request :user)) :nickname "anonymous")
+(defn- get-choices [{items :items}]
+  (->> items
+       (map #(select-keys % [:url :texts]))
+       (remove #(#{"add" "login"} (:url %)))))
+
+
+(defaction dbas.opinion-about-topic [{{{:keys [opinion reason]} :parameters lang :languageCode} :queryResult :as request}]
+  (let [nickname (get-nickname request)
         justification-url (->> (dialogflow/get-context request :position)
                                :parameters :url
                                (#(dbas/api-query! % nickname)) :attitudes
-                               (#(% (keyword (:opinion parameters)))) :url)
-        justifications (:items (dbas/api-query! justification-url nickname))
-        reason (:reason parameters)
-        nearest (->> justifications
-                     (remove #(= (:url %) "add"))
-                     (map #(hash-map :statement %
-                                     :confidence (dbas/sent-similarity (str/join (str \space (strings :conjunction) \space) (:texts %)) reason)))
-                     (first))
-        new-statement? (> (:confidence nearest) 0.90)]      ;; do something clever here
+                               (#(% (keyword opinion))) :url)
+        justification-data (dbas/api-query! justification-url nickname)]
+    (agent/speech "bla" :followupEventInput {:name "justification-event" :parameters {:reason reason} :languageCode lang}
+                  :outputContexts [(dialogflow/context request :justification-step {:add justification-url
+                                                                                    :justifications
+                                                                                         (get-choices justification-data)} 3)])))
+(defn- finish-url? [url]
+  (some? (re-find #"^\/\w+[\w|-]*\/(finish)" url)))
 
-    (if new-statement?
-      (let [answer (-> (dbas/api-post! justification-url nickname {:reason (:reason parameters)}) :bubbles last :text)]
-        (log/info "New statement:" reason)
-        (agent/speech answer))
-      (let [answer (-> (dbas/api-query! (get-in nearest [:statement :url])) nickname :bubbles last :text)]
-        (log/info "Matched statement:" reason "as" nearest)
-        (agent/speech answer)))))
+(defaction dbas.justify [{{{:keys [justification]} :parameters} :queryResult :as request}]
+  (let [nickname (get-nickname request)
+        {:keys [justifications add]} (:parameters (dialogflow/get-context request :justification-step))
+        nearest (if (empty? justifications)
+                  {:confidence 0}                           ;; no justificaitons -> no problemo
+                  (->> justification
+                       (calculate-similaritys justifications) ;; do something clever here
+                       (sort-by :confidence >)
+                       first))
+        new-statement? (< (:confidence nearest) 0.90)]
+
+    (let [reaction-data (if (and new-statement? nickname)   ;; TODO add some logic to log in
+                          (do
+                            (log/info "New statement:" (log/color-str :yellow justification))
+                            (dbas/api-post! add nickname {:reason justification}))
+                          (do
+                            (log/info "Matched statement:" (log/color-str :yellow justification) "as" nearest "with a confidence of" (:confidence nearest))
+                            (dbas/api-query! (get-in nearest [:statement :url]) nickname)))
+          answer (-> reaction-data :bubbles last :text)]
+      (agent/speech answer
+                    :outputContexts [(dialogflow/context request :reaction-step
+                                                         (into {} (for [[k v] (:attacks reaction-data)] [k (:url v)]))
+                                                         3)]
+                    :fulfillmentMessages [(fb/response-with-quick-replies (fb/text answer)
+                                                                          (fb/quick-replies "This convinced me" ; support
+                                                                                            "Right, but..." ; rebut
+                                                                                            "Thats not the point" ; undercut
+                                                                                            "I have a counter"))])))) ; undermine
+; "I don't know"))]))))
+
+
+(defaction dbas.reaction [{{{reaction :reaction} :parameters} :queryResult :as request}]
+  (let [nickname (get-nickname request)
+        url ((keyword reaction) (:parameters (dialogflow/get-context request :reaction-step)))
+        justification-data (dbas/api-query! url nickname)]
+    (agent/speech (->> (dbas/api-query! url nickname) (log/spy :debug) :bubbles last :text)
+                  :outputContexts
+                  [(dialogflow/context request
+                                       :justification-step
+                                       {:add            url
+                                        :justifications (get-choices justification-data)} 3)])))
