@@ -140,18 +140,22 @@
                                (#(dbas/api-query! % nickname)) :attitudes
                                (#(% (keyword opinion))) :url)
         justification-data (dbas/api-query! justification-url nickname)]
-    (agent/speech "bla" :followupEventInput {:name "justification-event" :parameters {:reason reason} :languageCode lang}
+    (agent/speech "_" :followupEventInput {:name "justification-event" :parameters {:reason reason} :languageCode lang}
                   :outputContexts [(dialogflow/context request :justification-step {:add justification-url
                                                                                     :justifications
                                                                                          (get-choices justification-data)} 3)])))
 (defn- finish-url? [url]
   (some? (re-find #"^\/\w+[\w|-]*\/(finish)" url)))
 
+(defn- remove-info-bubbles [bubbles]
+  (remove #(#{"info"} (:type %)) bubbles))
+
+
 (defaction dbas.justify [{{{:keys [justification]} :parameters} :queryResult :as request}]
   (let [nickname (get-nickname request)
         {:keys [justifications add]} (:parameters (dialogflow/get-context request :justification-step))
         nearest (if (empty? justifications)
-                  {:confidence 0}                           ;; no justificaitons -> no problemo
+                  {:confidence 0}                           ;; no justifications -> no problemo
                   (->> justification
                        (calculate-similaritys justifications) ;; do something clever here
                        (sort-by :confidence >)
@@ -165,7 +169,7 @@
                           (do
                             (log/info "Matched statement:" (log/color-str :yellow justification) "as" nearest "with a confidence of" (:confidence nearest))
                             (dbas/api-query! (get-in nearest [:statement :url]) nickname)))
-          answer (-> reaction-data :bubbles last :text)]
+          answer (-> reaction-data :bubbles remove-info-bubbles last :text)]
       (agent/speech answer
                     :outputContexts [(dialogflow/context request :reaction-step
                                                          (into {} (for [[k v] (:attacks reaction-data)] [k (:url v)]))
