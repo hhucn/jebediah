@@ -151,8 +151,26 @@
   (remove #(#{"info"} (:type %)) bubbles))
 
 
+(defn- >>reaction [request reaction-data]
+  (let [answer (-> reaction-data :bubbles remove-info-bubbles last :text)]
+    (agent/speech answer
+                  :outputContexts
+                  [(dialogflow/context request :reaction-step
+                                       (into {} (for [[k v] (:attacks reaction-data)] [k (:url v)]))
+                                       3)]
+
+                  :fulfillmentMessages
+                  [(fb/response-with-quick-replies
+                     (fb/text answer)
+                     (fb/quick-replies "This convinced me"  ; support
+                                       "Right, but..."      ; rebut
+                                       "Thats not the point" ; undercut
+                                       "I have a counter"))]))) ; undermine)
+; "I don't know"))]))))
+
 (defaction dbas.justify [{{{:keys [justification]} :parameters} :queryResult :as request}]
   (let [nickname (get-nickname request)
+        logged-in? (true? nickname)
         {:keys [justifications add]} (:parameters (dialogflow/get-context request :justification-step))
         nearest (if (empty? justifications)
                   {:confidence 0}                           ;; no justifications -> no problemo
@@ -162,24 +180,21 @@
                        first))
         new-statement? (< (:confidence nearest) 0.90)]
 
-    (let [reaction-data (if (and new-statement? nickname)   ;; TODO add some logic to log in
-                          (do
-                            (log/info "New statement:" (log/color-str :yellow justification))
-                            (dbas/api-post! add nickname {:reason justification}))
-                          (do
-                            (log/info "Matched statement:" (log/color-str :yellow justification) "as" nearest "with a confidence of" (:confidence nearest))
-                            (dbas/api-query! (get-in nearest [:statement :url]) nickname)))
-          answer (-> reaction-data :bubbles remove-info-bubbles last :text)]
-      (agent/speech answer
-                    :outputContexts [(dialogflow/context request :reaction-step
-                                                         (into {} (for [[k v] (:attacks reaction-data)] [k (:url v)]))
-                                                         3)]
-                    :fulfillmentMessages [(fb/response-with-quick-replies (fb/text answer)
-                                                                          (fb/quick-replies "This convinced me" ; support
-                                                                                            "Right, but..." ; rebut
-                                                                                            "Thats not the point" ; undercut
-                                                                                            "I have a counter"))])))) ; undermine
-; "I don't know"))]))))
+    (cond
+      (and new-statement? logged-in?)
+      (do
+        (log/info "New statement:" (log/color-str :yellow justification))
+        (>>reaction request (dbas/api-post! add nickname {:reason justification})))
+
+      (and new-statement? (not logged-in?))
+      (do
+        (log/info "User is not logged in!")
+        (agent/speech "To add a new statement you have to be logged in. Do you want to proceed? [This is currently in development and you can't actually respond.]"))
+
+      :just-matching
+      (do
+        (log/info "Matched statement:" (log/color-str :yellow justification) "as" nearest "with a confidence of" (:confidence nearest))
+        (>>reaction request (dbas/api-query! (get-in nearest [:statement :url]) nickname))))))
 
 
 (defaction dbas.reaction [{{{reaction :reaction} :parameters} :queryResult :as request}]
