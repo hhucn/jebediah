@@ -145,14 +145,13 @@
                                                                                     :justifications
                                                                                          (get-choices justification-data)} 3)])))
 (defn- finish-url? [url]
-  (some? (re-find #"^\/\w+[\w|-]*\/(finish)" url)))
+  (some? (re-find #"\/\w+[\w|-]*\/(finish)/\d+\?.*" url)))
 
-(defn- remove-info-bubbles [bubbles]
-  (remove #(#{"info"} (:type %)) bubbles))
-
+(defn- system-bubbles [bubbles]
+  (filter #(#{"system"} (:type %)) bubbles))
 
 (defn- >>reaction [request reaction-data]
-  (let [answer (-> reaction-data :bubbles remove-info-bubbles last :text)]
+  (let [answer (-> reaction-data :bubbles system-bubbles last :text)]
     (agent/speech answer
                   :outputContexts
                   [(dialogflow/context request :reaction-step
@@ -168,9 +167,14 @@
                                        "I have a counter"))]))) ; undermine)
 ; "I don't know"))]))))
 
+(defn >>finish [request reaction-data]
+  (let [answer (-> reaction-data :bubbles system-bubbles last :text)]
+    (agent/speech (str answer " What do you want to talk about next?") :outputContexts (dialogflow/reset-all-contexts request))))
+
+
 (defaction dbas.justify [{{{:keys [justification]} :parameters} :queryResult :as request}]
   (let [nickname (get-nickname request)
-        logged-in? (true? nickname)
+        logged-in? (boolean nickname)
         {:keys [justifications add]} (:parameters (dialogflow/get-context request :justification-step))
         nearest (if (empty? justifications)
                   {:confidence 0}                           ;; no justifications -> no problemo
@@ -184,7 +188,10 @@
       (and new-statement? logged-in?)
       (do
         (log/info "New statement:" (log/color-str :yellow justification))
-        (>>reaction request (dbas/api-post! add nickname {:reason justification})))
+        (let [response (dbas/api-post! add nickname {:reason justification})]
+          (if (->> response :trace-redirects first (log/spy :debug) finish-url?)
+            (>>finish request response)
+            (>>reaction request response))))
 
       (and new-statement? (not logged-in?))
       (do
@@ -194,7 +201,11 @@
       :just-matching
       (do
         (log/info "Matched statement:" (log/color-str :yellow justification) "as" nearest "with a confidence of" (:confidence nearest))
-        (>>reaction request (dbas/api-query! (get-in nearest [:statement :url]) nickname))))))
+        (let [url (get-in nearest [:statement :url])
+              response (dbas/api-query! url nickname)]
+          (if (finish-url? url)
+            (>>finish request response)
+            (>>reaction request response)))))))
 
 
 (defaction dbas.reaction [{{{reaction :reaction} :parameters} :queryResult :as request}]

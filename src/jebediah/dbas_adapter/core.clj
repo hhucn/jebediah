@@ -38,10 +38,12 @@
 (defn api-post!
   ([path nickname body]
    (log/debug "POST to: " path " with " body)
-   (:body (client/post (merge-paths api-base path) {:headers      {:X-Authentication (json/write-str {:nickname nickname :token dbas-api-token})}
-                                                    :as           :auto
-                                                    :content-type :json
-                                                    :body         (json/write-str body)}))))
+   (let [response (client/post (merge-paths api-base path) {:headers      {:X-Authentication (json/write-str {:nickname nickname :token dbas-api-token})}
+                                                            :as           :auto
+                                                            :content-type :json
+                                                            :body         (json/write-str body)})]
+     (merge (:body response)
+            (select-keys response [:trace-redirects])))))   ; this is needed to detect if the POST results in a 'finish' url
 
 
 (defn get-positions-for-issue [slug]
