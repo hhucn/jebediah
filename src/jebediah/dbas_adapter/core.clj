@@ -3,12 +3,11 @@
             [clj-http.client :as client]
             [clj-fuzzy.metrics :as fuzzy-metrics]
             [taoensso.timbre :as log]
-            [clojure.data.json :as json]))
+            [clojure.data.json :as json]
+            [jebediah.config :refer [dbas-url dbas-api-token]]))
 
-(def base (or (System/getenv "DBAS_BASE") "https://web.dbas.coruscant.cs.uni-duesseldorf.de"))
-(def dbas-api-token (or (System/getenv "DBAS_TOKEN") "14f3e:486fbbd337e98d41121bb067ab4ff8db0be276d47f1271e319a0e3b61b11c252"))
-(def graphql-base (str base "/api/v2/query?q="))
-(def api-base (str base "/api"))
+(def graphql-base (str dbas-url "/api/v2/query?q="))
+(def api-base (str dbas-url "/api"))
 
 (defn query [& qs]
   (:body (client/get (str graphql-base (str/replace (str/join qs) #"[\s\r\n]+" "")) {:as :auto})))
@@ -30,7 +29,7 @@
    (:body (client/get (merge-paths api-base path) {:as :auto})))
   ([path nickname]
    (log/debug "GET from:" path "with nickname" nickname)
-   (:body (client/get (merge-paths api-base path) (merge {:as      :auto}
+   (:body (client/get (merge-paths api-base path) (merge {:as :auto}
                                                          (when nickname
                                                            {:headers {:X-Authentication (json/write-str {:nickname nickname :token dbas-api-token})}}))))))
 
@@ -44,6 +43,24 @@
                                                             :body         (json/write-str body)})]
      (merge (:body response)
             (select-keys response [:trace-redirects])))))   ; this is needed to detect if the POST results in a 'finish' url
+
+(defn create-dbas-oauth-account! [fb-user]
+  (let [{:keys [first_name last_name id email locale gender] :or {email  "jeb@dbas.cs.uni-duesseldorf.de"
+                                                                  locale "de_DE"
+                                                                  gender "n"}} fb-user
+        nickname (log/spy :debug (str first_name last_name id))]
+    (try
+      (api-post! "/users" "Tobias" {:firstname first_name
+                                    :lastname  last_name
+                                    :nickname  nickname
+                                    :service   "jeb"
+                                    :locale    locale
+                                    :email     email
+                                    :gender    (str (first gender))
+                                    :id        (Long/parseLong id)})
+      (catch Exception e))
+    nickname))
+
 
 
 (defn get-positions-for-issue [slug]
