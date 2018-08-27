@@ -13,7 +13,7 @@
             [jebediah.dbas-adapter.core :as dbas]
             [jebediah.actions.dbas]
             [jebediah.actions.dbas-auth]
-            [jebediah.config :refer [jebediah-test-page-access-token]]
+            [jebediah.config :refer [jebediah-test-page-access-token dialogflow-user dialogflow-pw eauth-url]]
             [clj-http.client :as client]))
 
 
@@ -22,8 +22,11 @@
    :middleware [(fn [data] (update data :vargs (partial mapv #(if (string? %) % (with-out-str (pprint %))))))]
    :appenders  {:spit (appenders/spit-appender {:fname "./jeb.log"})}})
 
-(defonce basic-auth {:name (System/getenv "AUTH_USER")
-                     :pass (System/getenv "AUTH_PASS")})
+(def fb-token-valid?
+  (boolean (client/get (str "https://graph.facebook.com/v3.1/me&access_token=" jebediah-test-page-access-token) {:throw-exceptions false})))
+
+(defonce basic-auth {:name dialogflow-user
+                     :pass dialogflow-pw})
 
 (defn authenticated? [name pass]
   (if (and (:name basic-auth) (:pass basic-auth))
@@ -90,15 +93,23 @@
 (when-not (and (:name basic-auth) (:name basic-auth))
   (log/warn "You didn't define any authentication!"))
 
-(when-not (dbas/dbas-available?)
-  (loop [retrys 10]
-    (log/fatal "D-BAS is unreachable under" dbas/api-base ". Trying" retrys "more times")
-    (when-not (dbas/dbas-available?)
-      (if (zero? retrys)
+(defn retry-or-fail [fun msg retries]
+  (loop [retry retries]
+    (log/fatal msg)
+    (log/fatal (str "Trying " retry " more times."))
+    (when-not (fun)
+      (if (zero? retry)
         (System/exit 1)
         (do
-          (Thread/sleep 1000)
-          (recur (dec retrys)))))))
+          (Thread/sleep 5000)
+          (recur (dec retry)))))))
+
+
+(when-not (dbas/dbas-available?)
+  (retry-or-fail dbas/dbas-available? (str "D-BAS is unreachable under " dbas/api-base ".") 4))
+
+(when-not (auth/eauth-available?)
+  (retry-or-fail auth/eauth-available? (str "EAUTH is unreachable under " eauth-url ".") 4))
 
 (when-not fb-token-valid?
   (log/fatal "Your Facebook page access token is invalid!")
