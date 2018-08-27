@@ -4,10 +4,16 @@
             [clj-fuzzy.metrics :as fuzzy-metrics]
             [taoensso.timbre :as log]
             [clojure.data.json :as json]
-            [jebediah.config :refer [dbas-url dbas-api-token]]))
+            [jebediah.config :refer [dbas-url dbas-api-token]])
+  (:import (java.net ConnectException)))
 
 (def graphql-base (str dbas-url "/api/v2/query?q="))
 (def api-base (str dbas-url "/api"))
+
+(defn dbas-available? []
+  (try
+    (boolean (client/head (str api-base "/issues") {:throw-exceptions false}))
+    (catch ConnectException e false)))
 
 (defn query [& qs]
   (:body (client/get (str graphql-base (str/replace (str/join qs) #"[\s\r\n]+" "")) {:as :auto})))

@@ -13,3 +13,4 @@ pom.xml.asc
 .#*
 
 !/lib/apiai-clj
+.env

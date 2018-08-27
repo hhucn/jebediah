@@ -17,7 +17,6 @@
             [clj-http.client :as client]))
 
 
-
 (log/merge-config!
   {:level      :debug
    :middleware [(fn [data] (update data :vargs (partial mapv #(if (string? %) % (with-out-str (pprint %))))))]
@@ -90,6 +89,20 @@
 
 (when-not (and (:name basic-auth) (:name basic-auth))
   (log/warn "You didn't define any authentication!"))
+
+(when-not (dbas/dbas-available?)
+  (loop [retrys 10]
+    (log/fatal "D-BAS is unreachable under" dbas/api-base ". Trying" retrys "more times")
+    (when-not (dbas/dbas-available?)
+      (if (zero? retrys)
+        (System/exit 1)
+        (do
+          (Thread/sleep 1000)
+          (recur (dec retrys)))))))
+
+(when-not fb-token-valid?
+  (log/fatal "Your Facebook page access token is invalid!")
+  (System/exit 1))
 
 (log/infof "Enabled actions:\n%s" (join \newline (keys (methods dialogflow/dispatch-action))))
 
