@@ -87,7 +87,8 @@
            (log/spy :info)
            (dialogflow/dispatch-action)
            (#(do (log/spy :info (into {} %)) %))
-           ok))))
+           ok))
+    (GET "/health" [] (ok "ok"))))
 
 
 (when-not (and (:name basic-auth) (:name basic-auth))
