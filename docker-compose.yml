@@ -1,0 +1,31 @@
+version: '3'
+
+services:
+  jeb:
+    image: mroerni/jebediah
+    ports:
+    - 1234:1234
+    environment:
+      PORT: 1234
+      EAUTH: eauth
+      PAGE_ACCESS_TOKEN: $PAGE_ACCESS_TOKEN
+      DBAS_BASE: $DBAS_URL
+      DBAS_TOKEN: $DBAS_TOKEN
+    depends_on:
+    - eauth
+  fb-hook:
+    image: mroerni/dbas-fb-hook
+    ports:
+    - 1235:1235
+    environment:
+      PORT: 1235
+      DIALOGFLOW_URL: $DIALOGFLOW_URL
+      EAUTH_URL: eauth/success/
+    depends_on:
+    - jeb
+    - eauth
+  eauth:
+    image: mroerni/dbas-eauth
+    environment:
+      PORT: 80
+      DBAS_URL: $DBAS_URL

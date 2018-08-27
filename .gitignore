@@ -12,5 +12,8 @@ pom.xml.asc
 /.idea/
 .#*
 
+bulk.json
+
 !/lib/apiai-clj
 .env
+jeb.log
