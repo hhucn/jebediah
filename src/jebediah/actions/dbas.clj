@@ -38,7 +38,7 @@
                           :outputContexts [(dialogflow/context request "topic" topic 5)
                                            (dialogflow/context request "position" position 5)]
                           :fulfillmentMessages
-                          [(fb/response-with-quick-replies (fb/text text) (fb/quick-replies "Yes" "No"))])) ; "I don't know"))]))
+                          [(fb/response-with-quick-replies (fb/text text) (fb/quick-replies "Yes" "No" "I don't know"))])) ; "I don't know"))]))
           (agent/speech (strings :first-one-in-topic))))
       (agent/speech (format (strings :no-topic-but) (:title topic))
                     :outputContexts [(dialogflow/context request "suggested-topic" {:suggested-title (:title topic)} 2)
@@ -193,6 +193,7 @@
             (>>finish request response)
             (>>reaction request response))))
 
+      ; This situation can't occur, if we create users automatically
       (and new-statement? (not logged-in?))
       (do
         (log/info "User is not logged in!")
@@ -218,3 +219,9 @@
                                        :justification-step
                                        {:add            url
                                         :justifications (get-choices justification-data)} 3)])))
+
+(defaction dbas.dontknow-position [request]
+  (let [nickname (get-nickname request)
+        url (-> (dialogflow/get-context request :position) :parameters :url (dbas/api-query! nickname) :attitudes :dontknow :url)
+        reaction-data (dbas/api-query! url nickname)]
+    (>>reaction request reaction-data)))
