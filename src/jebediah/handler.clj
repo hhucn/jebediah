@@ -1,9 +1,9 @@
 (ns jebediah.handler
-  (:require [compojure.api.sweet :refer :all]
+  (:require [compojure.api.sweet :refer [api GET POST]]
             [clojure.pprint :refer [pprint]]
             [ring.middleware.basic-authentication :refer [wrap-basic-authentication]]
             [ring.logger :as logger]
-            [ring.util.http-response :refer :all]
+            [ring.util.http-response :refer [ok charset content-type]]
             [taoensso.timbre :as log]
             [taoensso.timbre.appenders.core :as appenders]
             [clojure.string :refer [join]]
@@ -83,18 +83,18 @@
     (POST "/" request
       :middleware [[wrap-basic-authentication authenticated?]
                    [wrap-with-user-resolving]]
-      (->> (:body-params request)
-           (log/spy :info)
-           (dialogflow/dispatch-action)
-           (#(do (log/spy :info (into {} %)) %))
-           ok))
-    (GET "/health" [] (ok "ok"))))
+      (as-> request $
+            (:body-params $)
+            (log/spy :info $)
+            (dialogflow/dispatch-action $)
+            (do (log/spy :info (into {} $)) $)
+            (ok $)
+            (content-type $ "application/json")
+            (charset $ "UTF-8")))
+    (GET "/health" [] (ok "ök"))))
 
 
-(when-not (and (:name basic-auth) (:name basic-auth))
-  (log/warn "You didn't define any authentication!"))
-
-(defn retry-or-fail [fun msg retries]
+(defn- retry-or-fail [fun msg retries]
   (loop [retry retries]
     (log/fatal msg)
     (log/fatal (str "Trying " retry " more times."))
@@ -105,16 +105,19 @@
           (Thread/sleep 5000)
           (recur (dec retry)))))))
 
+(defn init []
+  (when-not (and (:name basic-auth) (:name basic-auth))
+    (log/warn "You didn't define any authentication!"))
 
-(when-not (dbas/dbas-available?)
-  (retry-or-fail dbas/dbas-available? (str "D-BAS is unreachable under " dbas/api-base ".") 4))
+  (when-not (dbas/dbas-available?)
+    (retry-or-fail dbas/dbas-available? (str "D-BAS is unreachable under " dbas/api-base ".") 4))
 
-(when-not (auth/eauth-available?)
-  (retry-or-fail auth/eauth-available? (str "EAUTH is unreachable under " eauth-url ".") 4))
+  (when-not (auth/eauth-available?)
+    (retry-or-fail auth/eauth-available? (str "EAUTH is unreachable under " eauth-url ".") 4))
 
-(when-not fb-token-valid?
-  (log/fatal "Your Facebook page access token is invalid!")
-  (System/exit 1))
+  (when-not fb-token-valid?
+    (log/fatal "Your Facebook page access token is invalid!")
+    (System/exit 1)))
 
 (log/infof "Enabled actions:\n%s" (join \newline (keys (methods dialogflow/dispatch-action))))
 

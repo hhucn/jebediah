@@ -12,6 +12,7 @@
                  [clj-fuzzy "0.4.1"]]
   :plugins [[lein-ring "0.9.7"]]
   :source-paths ["src"]
-  :ring {:handler jebediah.handler/app}
+  :ring {:init    jebediah.handler/init
+         :handler jebediah.handler/app}
   :profiles {:dev {:dependencies [[javax.servlet/servlet-api "2.5"]
                                   [ring/ring-mock "0.3.2"]]}})
