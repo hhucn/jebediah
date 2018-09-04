@@ -26,6 +26,11 @@
 (defn- get-nickname [request]
   (get (:parameters (dialogflow/get-context request :user)) :nickname))
 
+(defn >>first-one-in-topic [{{lang :languageCode} :queryResult :as request}]
+  (agent/speech (strings :first-one-in-topic)
+                :followupEventInput {:name "add-position" :languageCode lang}))
+
+
 (defaction dbas.start-discussions [{{{natural-topic :topic} :parameters lang :languageCode} :queryResult :as request}]
   (let [{confidence :confidence
          topic      :topic} (first (dbas/natural-topic->nearest-topics natural-topic lang))]
@@ -39,7 +44,8 @@
                                            (dialogflow/context request "position" position 5)]
                           :fulfillmentMessages
                           [(fb/response-with-quick-replies (fb/text text) (fb/quick-replies "Yes" "No" "I don't know"))])) ; "I don't know"))]))
-          (agent/speech (strings :first-one-in-topic))))
+          (-> (>>first-one-in-topic request)
+              (update-in [:outputContexts] conj (dialogflow/context request "topic" topic 5)))))
       (agent/speech (format (strings :no-topic-but) (:title topic))
                     :outputContexts [(dialogflow/context request "suggested-topic" {:suggested-title (:title topic)} 2)
                                      (dialogflow/reset-context request "topic")
@@ -149,6 +155,12 @@
 
 (defn- system-bubbles [bubbles]
   (filter #(#{"system"} (:type %)) bubbles))
+
+(defaction dbas.add-position [{{{:keys [position reason]} :parameters} :queryResult :as request}]
+  (let [nickname (get-nickname request)
+        topic-url (-> request (dialogflow/get-context :topic) :parameters :url)
+        pos (dbas/api-post! (str topic-url "/positions") nickname {:position position :reason reason})]
+    (agent/speech (-> pos :bubbles system-bubbles last :text))))
 
 (defn- >>reaction [request reaction-data]
   (let [answer (-> reaction-data :bubbles system-bubbles last :text)]

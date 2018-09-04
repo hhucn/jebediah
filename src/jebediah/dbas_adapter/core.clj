@@ -64,7 +64,7 @@
                                     :email     email
                                     :gender    (str (first gender))
                                     :id        (Long/parseLong id)})
-      (catch Exception e))
+      (catch Exception e (log/error e)))
     nickname))
 
 

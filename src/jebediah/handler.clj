@@ -88,10 +88,8 @@
             (log/spy :info $)
             (dialogflow/dispatch-action $)
             (do (log/spy :info (into {} $)) $)
-            (ok $)
-            (content-type $ "application/json")
-            (charset $ "UTF-8")))
-    (GET "/health" [] (ok "ök"))))
+            (ok $)))
+    (GET "/health" [] (ok "ok"))))
 
 
 (defn- retry-or-fail [fun msg retries]
