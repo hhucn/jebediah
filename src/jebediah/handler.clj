@@ -115,8 +115,8 @@
 
   (when-not fb-token-valid?
     (log/fatal "Your Facebook page access token is invalid!")
-    (System/exit 1)))
+    (System/exit 1))
 
-(log/infof "Enabled actions:\n%s" (join \newline (keys (methods dialogflow/dispatch-action))))
+  (log/infof "Enabled actions:\n%s" (join \newline (keys (methods dialogflow/dispatch-action)))))
 
 (def app (logger/wrap-with-logger app-routes))

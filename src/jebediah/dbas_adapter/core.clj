@@ -70,8 +70,9 @@
 
 
 (defn get-positions-for-issue [slug]
-  (let [response (query "query{issue(slug:\"" slug "\"){statements(isStartpoint:true,isDisabled:false){uid,isStartpoint,isDisabled,textversions{content}}}}")]
-    (get-in response [:issue :statements])))
+  (let [response (api-query! (str "/" slug))]
+    (log/debug response)
+    (->> response :items (map (comp first :texts)))))
 
 (defn get-issues []
   (api-query! "/issues"))

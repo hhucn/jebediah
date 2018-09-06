@@ -26,30 +26,40 @@
 (defn- get-nickname [request]
   (get (:parameters (dialogflow/get-context request :user)) :nickname))
 
-(defn >>first-one-in-topic [{{lang :languageCode} :queryResult :as request}]
+(defn >>first-one-in-topic [{{lang :languageCode} :queryResult :as request} topic]
   (agent/speech (strings :first-one-in-topic)
+                :outputContexts [(dialogflow/context request "topic" topic 5)]
                 :followupEventInput {:name "add-position" :languageCode lang}))
 
+(defn- conjunct [texts]
+  (str/join (str \space (strings :conjunction) \space) texts))
+
+(defn- >>ask-opinion-about-position [request topic position]
+  (let [text (format (strings :talk-about) (:title topic) (conjunct (:texts position)))]
+    (agent/speech text
+                  :outputContexts [(dialogflow/context request "topic" topic 5)
+                                   (dialogflow/context request "position" position 5)]
+                  :fulfillmentMessages
+                  [(fb/response-with-quick-replies (fb/text text) (fb/quick-replies "Yes" "No" "I don't know"
+                                                                                    {:content_type "text"
+                                                                                     :title        "New idea..."
+                                                                                     :payload      "I want to add a new position"}))])))
+
+(defn- >>suggest-topic [request topic]
+  (agent/speech (format (strings :no-topic-but) (:title topic))
+                :outputContexts [(dialogflow/context request "suggested-topic" {:suggested-title (:title topic)} 2)
+                                 (dialogflow/reset-context request "topic")
+                                 (dialogflow/reset-context request "position")]))
 
 (defaction dbas.start-discussions [{{{natural-topic :topic} :parameters lang :languageCode} :queryResult :as request}]
   (let [{confidence :confidence
          topic      :topic} (first (dbas/natural-topic->nearest-topics natural-topic lang))]
     (if (> confidence 0.9)
       (let [positions (:items (dbas/get-positions (:slug topic)))]
-        (if (pos? (count positions))
-          (let [position (rand-nth positions)
-                text (format (strings :talk-about) (:title topic) (str/join (str \space (strings :conjunction) \space) (:texts position)))]
-            (agent/speech text
-                          :outputContexts [(dialogflow/context request "topic" topic 5)
-                                           (dialogflow/context request "position" position 5)]
-                          :fulfillmentMessages
-                          [(fb/response-with-quick-replies (fb/text text) (fb/quick-replies "Yes" "No" "I don't know"))])) ; "I don't know"))]))
-          (-> (>>first-one-in-topic request)
-              (update-in [:outputContexts] conj (dialogflow/context request "topic" topic 5)))))
-      (agent/speech (format (strings :no-topic-but) (:title topic))
-                    :outputContexts [(dialogflow/context request "suggested-topic" {:suggested-title (:title topic)} 2)
-                                     (dialogflow/reset-context request "topic")
-                                     (dialogflow/reset-context request "position")]))))
+        (if (not (empty? positions))
+          (>>ask-opinion-about-position request topic (rand-nth positions))
+          (>>first-one-in-topic request topic)))
+      (>>suggest-topic request topic))))
 
 
 (defaction dbas.list-discussions [{{lang :languageCode} :queryResult}]
@@ -99,7 +109,7 @@
 
 (defaction dbas.show-positions-with-topic [request]
   (let [topic (:parameters (dialogflow/get-context request "topic"))
-        positions (map #(get-in % [:textversions :content]) (dbas/get-positions-for-issue (:slug topic)))]
+        positions (dbas/get-positions-for-issue (:slug topic))]
     (agent/speech
       (format (strings :position-list) (:title topic) (str/join ", " (take 3 positions)))
       :fulfillmentMessages
@@ -130,7 +140,7 @@
 (defn- calculate-similaritys [justifications reason]
   (map #(hash-map
           :statement %
-          :confidence (dbas/sent-similarity (str/join (str \space (strings :conjunction) \space) (:texts %)) reason))
+          :confidence (dbas/sent-similarity (conjunct (:texts %)) reason))
        justifications))
 
 (defn- get-choices [{items :items}]
@@ -175,7 +185,7 @@
                      (fb/text answer)
                      (fb/quick-replies "This convinced me"  ; support
                                        "Right, but..."      ; rebut
-                                       "Thats not the point" ; undercut
+                                       "That's not the point" ; undercut
                                        "I have a counter"))]))) ; undermine)
 ; "I don't know"))]))))
 

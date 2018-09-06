@@ -48,9 +48,11 @@
                                        :payload "more"}]}))}}))
 
 (defn- quick-reply [reply]
-  {:content_type "text"
-   :title        reply
-   :payload      reply})
+  (if (map? reply)
+    reply
+    {:content_type "text"
+     :title        reply
+     :payload      reply}))
 
 
 (defn quick-replies [& replies]
