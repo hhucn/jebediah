@@ -151,7 +151,7 @@
                                                                                     :justifications
                                                                                          (get-choices justification-data)} 3)])))
 (defn- finish-url? [url]
-  (some? (re-find #"\/\w+[\w|-]*\/(finish)/\d+\?.*" url)))
+  (some? (re-find #"\/\w+[\w|-]*\/(finish)\/\d+(|\?.*)" url)))
 
 (defn- system-bubbles [bubbles]
   (filter #(#{"system"} (:type %)) bubbles))

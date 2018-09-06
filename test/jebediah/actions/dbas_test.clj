@@ -15,4 +15,7 @@
           "false-negative with fully qualified urls")
 
       (is (not (finish-url? "/cat-or-dog/reaction/79/rebut/8?history=attitude/4"))
-          "false-positive with partial urls"))))
+          "false-positive with partial urls")
+
+      (is (finish-url? "http://0.0.0.0:4284/api/make-the-world-better/finish/93")
+          "url without parameters"))))
