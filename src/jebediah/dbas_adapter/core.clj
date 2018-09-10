@@ -69,7 +69,7 @@
 
 
 
-(defn get-positions-for-issue [slug]
+(defn get-position-texts-for-issue [slug]
   (let [response (api-query! (str "/" slug))]
     (log/debug response)
     (->> response :items (map (comp first :texts)))))
@@ -101,8 +101,14 @@
       0
       (- 1 (/ d l)))))
 
+(defn similarities [coll free-form & {:keys [key-fn] :or {key-fn identity}}]
+  (map #(hash-map :entity %
+                  :confidence (sent-similarity (.toLowerCase free-form)
+                                               (.toLowerCase (key-fn %))))
+       coll))
+
 (defn natural-topic->nearest-topics [free-form-topic language]
-  (->> (get-issues)
-       (filter #(= language (:language %)))
-       (map #(hash-map :topic % :confidence (sent-similarity (.toLowerCase (:title %)) (.toLowerCase free-form-topic))))
-       (sort-by :confidence >)))
+  (as-> (get-issues) $
+        (filter #(= language (:language %)) $)
+        (similarities $ free-form-topic :key-fn :title)
+        (sort-by :confidence > $)))

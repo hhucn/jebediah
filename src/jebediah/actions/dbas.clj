@@ -38,12 +38,16 @@
   (let [text (format (strings :talk-about) (:title topic) (conjunct (:texts position)))]
     (agent/speech text
                   :outputContexts [(dialogflow/context request "topic" topic 5)
-                                   (dialogflow/context request "position" position 5)]
+                                   (dialogflow/context request "position" position 5)
+                                   (dialogflow/context request "-tLetustalkabouttopic-followup" nil 1)]
                   :fulfillmentMessages
                   [(fb/response-with-quick-replies (fb/text text) (fb/quick-replies "Yes" "No" "I don't know"
                                                                                     {:content_type "text"
                                                                                      :title        "New idea..."
-                                                                                     :payload      "I want to add a new position"}))])))
+                                                                                     :payload      "I want to add a new position"}
+                                                                                    {:content_type "text"
+                                                                                     :title        "More positions"
+                                                                                     :payload      "Show me more positions"}))])))
 
 (defn- >>suggest-topic [request topic]
   (agent/speech (format (strings :no-topic-but) (:title topic))
@@ -53,7 +57,7 @@
 
 (defaction dbas.start-discussions [{{{natural-topic :topic} :parameters lang :languageCode} :queryResult :as request}]
   (let [{confidence :confidence
-         topic      :topic} (first (dbas/natural-topic->nearest-topics natural-topic lang))]
+         topic      :entity} (first (dbas/natural-topic->nearest-topics natural-topic lang))]
     (if (> confidence 0.9)
       (let [positions (:items (dbas/get-positions (:slug topic)))]
         (if (not (empty? positions))
@@ -61,17 +65,27 @@
           (>>first-one-in-topic request topic)))
       (>>suggest-topic request topic))))
 
+(defn- facebook-list-of-topics [text topics & {:keys [topics-to-show] :or {topics-to-show 3}}]
+  (fb/response
+    (fb/rich-list-with-text
+      text
+      (mapv #(fb/list-entry-postback-button
+               (:title %) (:summary %)
+               (fb/button "This" (format (strings :button-let-us-talk-about) (:title %))))
+            (take topics-to-show topics))
+      (> (count topics) topics-to-show))))
 
-(defaction dbas.list-discussions [{{lang :languageCode} :queryResult}]
+(defn >>list-topics [request text lang]
   (let [topics-to-show 3
         topics (filter #(= lang (:language %)) (dbas/api-query! "/issues"))]
     (agent/speech
       (format (strings :list-topics) (str/join ", " (take topics-to-show (map :title topics))))
+      :outputContexts [(dialogflow/context request "Whatarethetopics-followup" nil 1)]
       :fulfillmentMessages
-      [(fb/response (fb/rich-list
-                      (mapv #(fb/list-entry-postback-button (:title %) (:summary %) (format (strings :button-let-us-talk-about) (:title %)))
-                            (take topics-to-show topics))
-                      (> (count topics) topics-to-show)))])))
+      [(facebook-list-of-topics text topics :topics-to-show topics-to-show)])))
+
+(defaction dbas.list-discussions [{{lang :languageCode} :queryResult :as request}]
+  (>>list-topics request "Here are some topics we could talk about." lang))
 
 
 (defaction dbas.list-discussions.more [{{lang :languageCode} :queryResult}]
@@ -84,12 +98,15 @@
       (agent/speech
         (format (strings :n-more-topics) (count more-topics) (str/join ", " (map :title more-topics)))
         :fulfillmentMessages
-        [(fb/response (fb/rich-list
-                        (mapv #(fb/list-entry-postback-button
-                                 (:title %)
-                                 (:summary %)
-                                 (format (strings :button-let-us-talk-about) %))
-                              (take 3 more-topics))))]))))
+        [(fb/response
+           (fb/rich-list-with-text
+             "Here are some topics we could talk about."
+             (mapv #(fb/list-entry-postback-button
+                      (:title %)
+                      (:summary %)
+                      (fb/button "This" (format (strings :button-let-us-talk-about) %)))
+                   (take 3 more-topics))
+             false))]))))
 
 
 (defaction dbas.info-discussion [{{{topic :topic} :parameters lang :languageCode} :queryResult :as request}]
@@ -107,13 +124,42 @@
                        (:info topic)))))
 
 
-(defaction dbas.show-positions-with-topic [request]
-  (let [topic (:parameters (dialogflow/get-context request "topic"))
-        positions (dbas/get-positions-for-issue (:slug topic))]
+(defn- >>show-positions-with-topic [request topic text]
+  (let [all-positions (dbas/get-position-texts-for-issue (:slug topic))
+        positions (take 3 all-positions)
+        more (drop 3 all-positions)]
     (agent/speech
-      (format (strings :position-list) (:title topic) (str/join ", " (take 3 positions)))
+      (format (strings :position-list) (:title topic) (str/join ", " positions))
+      :outputContexts (when (not (empty? more))
+                        [(dialogflow/context request :showpositions-more-followup {:more (vec more)} 1)])
       :fulfillmentMessages
-      [(fb/response (fb/rich-list (map #(fb/list-entry {:title % :subtitle " "}) (take 3 positions))))])))
+      [(fb/response
+         (fb/rich-list-with-text
+           text
+           (mapv #(fb/list-entry-postback-button % (str "Switch to position " %) (fb/button "Switch" (str "Switch to position " %)))
+                 positions)
+           (not (empty? more))))])))
+
+(defaction dbas.show-positions-with-topic [request]
+  (let [topic (:parameters (dialogflow/get-context request "topic"))]
+    (>>show-positions-with-topic request topic "Here are positions you can switch to.")))
+
+(defaction dbas.show-positions-with-topic-more [request]
+  (let [topic (dialogflow/get-context request :topic)
+        all-positions (:more (:parameters (dialogflow/get-context request :showpositions-more-followup)))
+        positions (take 3 all-positions)
+        more (drop 3 all-positions)]
+    (agent/speech
+      (format (strings :position-list) (:title topic) (str/join ", " positions))
+      :outputContexts (when (not (empty? more))
+                        [(dialogflow/context request :showpositions-more-followup {:more (vec more)} 1)])
+      :fulfillmentMessages
+      [(fb/response
+         (fb/rich-list-with-text
+           "Here are more positions you can switch to."
+           (mapv #(fb/list-entry-postback-button % (str "Switch to position " %) (fb/button "Switch" (str "Switch to position " %)))
+                 positions)
+           (not (empty? more))))])))
 
 
 (defaction dbas.search-for-issue [{{{topic :topic} :parameters} :queryResult :as request}]
@@ -126,10 +172,16 @@
                                  first :title))))))
 
 
+(defn- existing-position [topic free-form-position]
+  (let [positions (:items (dbas/get-positions (log/spy :debug (:slug topic))))
+        nearest (first (sort-by :confidence > (dbas/similarities positions free-form-position :key-fn (comp first :texts))))]
+    (when (> (:confidence nearest) 0.85)
+      (:entity nearest))))
+
 ; TODO
 (defaction dbas.thoughts-about-topic [{{{topic :topic} :parameters} :queryResult :as request}]
   (let [slug (get-in request [:result :parameters :discussion-topic])
-        statement (first (dbas/get-positions-for-issue slug))]
+        statement (first (dbas/get-position-texts-for-issue slug))]
     (agent/speech (format (strings :others-think) (str statement))
                   :outputContexts [(dialogflow/context request :position {:position-full statement} 3)])))
 
@@ -159,21 +211,50 @@
     (agent/speech "_" :followupEventInput {:name "justification-event" :parameters {:reason reason} :languageCode lang}
                   :outputContexts [(dialogflow/context request :justification-step {:add justification-url
                                                                                     :justifications
-                                                                                         (get-choices justification-data)} 3)])))
+                                                                                         (get-choices justification-data)} 1)])))
+
 (defn- finish-url? [url]
   (some? (re-find #"\/\w+[\w|-]*\/(finish)\/\d+(|\?.*)" url)))
 
 (defn- system-bubbles [bubbles]
   (filter #(#{"system"} (:type %)) bubbles))
 
-(defaction dbas.add-position [{{{:keys [position reason]} :parameters} :queryResult :as request}]
-  (let [nickname (get-nickname request)
-        topic-url (-> request (dialogflow/get-context :topic) :parameters :url)
-        pos (dbas/api-post! (str topic-url "/positions") nickname {:position position :reason reason})]
-    (agent/speech (-> pos :bubbles system-bubbles last :text))))
+(defn- last-system-bubble [dbas-response]
+  (-> dbas-response :bubbles system-bubbles last :text))
+
+(defn >>finish [request reaction-data]
+  (let [topic (:parameters (dialogflow/get-context request :topic))
+        answer (-> reaction-data :bubbles system-bubbles last :text)]
+    (let [positions (:items (dbas/get-positions (:slug topic)))]
+      (if (not (empty? positions))
+        (>>ask-opinion-about-position request topic (rand-nth positions))
+        (>>first-one-in-topic request topic)))
+    (>>show-positions-with-topic request topic (str answer " What do you want to talk about next?"))
+    #_(agent/speech (str answer " What do you want to talk about next?") :outputContexts (dialogflow/reset-all-contexts request))))
+
+
+(defaction dbas.switch-position [{{{:keys [position]} :parameters lang :languageCode} :queryResult :as request}]
+  (let [topic (-> request (dialogflow/get-context :topic) :parameters)]
+    (if-let [matched-position (existing-position topic position)]
+      (>>ask-opinion-about-position request topic matched-position)
+      (>>show-positions-with-topic request topic "Here are positions you can switch to."))))
+
+
+(defaction dbas.add-position [{{{:keys [position reason]} :parameters lang :languageCode} :queryResult :as request}]
+  (let [topic (-> request (dialogflow/get-context :topic) :parameters)
+        nickname (get-nickname request)]
+    (if-let [matched-position (existing-position topic position)]
+      ;(>>ask-opinion-about-position request topic position)
+      (agent/speech "_"
+                    :followupEventInput {:name "opinion-about-position-event" :parameters {:opinion "agree" :reason reason} :languageCode lang}
+                    :outputContexts [(dialogflow/context request :position matched-position 5)])
+      (let [response (dbas/api-post! (str (:url topic) "/positions") nickname {:position position :reason reason})]
+        (if (->> response :trace-redirects first (log/spy :debug) finish-url? (log/spy :debug))
+          (>>finish request response)
+          (agent/speech (last-system-bubble response)))))))
 
 (defn- >>reaction [request reaction-data]
-  (let [answer (-> reaction-data :bubbles system-bubbles last :text)]
+  (let [answer (last-system-bubble reaction-data)]
     (agent/speech answer
                   :outputContexts
                   [(dialogflow/context request :reaction-step
@@ -187,11 +268,6 @@
                                        "Right, but..."      ; rebut
                                        "That's not the point" ; undercut
                                        "I have a counter"))]))) ; undermine)
-; "I don't know"))]))))
-
-(defn >>finish [request reaction-data]
-  (let [answer (-> reaction-data :bubbles system-bubbles last :text)]
-    (agent/speech (str answer " What do you want to talk about next?") :outputContexts (dialogflow/reset-all-contexts request))))
 
 
 (defaction dbas.justify [{{{:keys [justification]} :parameters} :queryResult :as request}]
@@ -235,15 +311,20 @@
   (let [nickname (get-nickname request)
         url ((keyword reaction) (:parameters (dialogflow/get-context request :reaction-step)))
         justification-data (dbas/api-query! url nickname)]
-    (agent/speech (->> (dbas/api-query! url nickname) (log/spy :debug) :bubbles last :text)
-                  :outputContexts
-                  [(dialogflow/context request
-                                       :justification-step
-                                       {:add            url
-                                        :justifications (get-choices justification-data)} 3)])))
+    (if (= (keyword reaction) :support)
+      (>>reaction request justification-data)
+      (agent/speech (->> (dbas/api-query! url nickname) (log/spy :debug) :bubbles last :text)
+                    :outputContexts
+                    [(dialogflow/context request
+                                         :justification-step
+                                         {:add            url
+                                          :justifications (get-choices justification-data)} 1)]))))
 
 (defaction dbas.dontknow-position [request]
   (let [nickname (get-nickname request)
         url (-> (dialogflow/get-context request :position) :parameters :url (dbas/api-query! nickname) :attitudes :dontknow :url)
         reaction-data (dbas/api-query! url nickname)]
     (>>reaction request reaction-data)))
+
+(defaction fallback.default [{{lang :languageCode} :queryResult :as request}]
+  (>>list-topics request "Hello I am Jebediah, the D-BAS test bot. What do you want to discuss with me?" lang))

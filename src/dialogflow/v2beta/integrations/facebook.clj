@@ -20,18 +20,36 @@
 (defn text [text]
   {:text text})
 
+(defn button
+  ([title] (button title title))
+  ([title payload]
+   {:type    "postback"
+    :title   title
+    :payload payload}))
+
 (defn list-entry-postback-button
-  [title subtitle payload]
-  {:title    title
-   :subtitle subtitle
-   :buttons  [{:type    "postback"
-               :title   "This!"
-               :payload payload}]})
+  ([title subtitle & buttons]
+   {:title    title
+    :subtitle subtitle
+    :buttons  buttons}))
 
 
 (defn list-entry [entry]
   {:title    (:title entry)
    :subtitle (:subtitle entry)})
+
+(defn rich-list-with-text
+  ([text entries more?]
+   {:attachment {:type "template"
+                 :payload
+                       (merge
+                         {:template_type     "list"
+                          :top_element_style "compact"
+                          :elements          (cons {:title text :subtitle " "} (vec entries))}
+                         (when more?
+                           {:buttons [{:title   "View More"
+                                       :type    "postback"
+                                       :payload "more"}]}))}}))
 
 (defn rich-list
   ([entries] (rich-list entries false))
