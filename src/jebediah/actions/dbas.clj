@@ -130,8 +130,8 @@
         more (drop 3 all-positions)]
     (agent/speech
       (format (strings :position-list) (:title topic) (str/join ", " positions))
-      :outputContexts (when (not (empty? more))
-                        [(dialogflow/context request :showpositions-more-followup {:more (vec more)} 1)])
+      :outputContexts (cond->> [(dialogflow/context request :free-position-in nil 1)]
+                               (not (empty? more)) (cons (dialogflow/context request :showpositions-more-followup {:more (vec more)} 1)))
       :fulfillmentMessages
       [(fb/response
          (fb/rich-list-with-text
@@ -151,8 +151,8 @@
         more (drop 3 all-positions)]
     (agent/speech
       (format (strings :position-list) (:title topic) (str/join ", " positions))
-      :outputContexts (when (not (empty? more))
-                        [(dialogflow/context request :showpositions-more-followup {:more (vec more)} 1)])
+      :outputContexts (cond->> [(dialogflow/context request :free-position-in nil 1)]
+                               (not (empty? more)) (cons (dialogflow/context request :showpositions-more-followup {:more (vec more)} 1)))
       :fulfillmentMessages
       [(fb/response
          (fb/rich-list-with-text
@@ -173,7 +173,7 @@
 
 
 (defn- existing-position [topic free-form-position]
-  (let [positions (:items (dbas/get-positions (log/spy :debug (:slug topic))))
+  (let [positions (:items (dbas/get-positions (:slug topic)))
         nearest (first (sort-by :confidence > (dbas/similarities positions free-form-position :key-fn (comp first :texts))))]
     (when (> (:confidence nearest) 0.85)
       (:entity nearest))))
@@ -233,7 +233,7 @@
     #_(agent/speech (str answer " What do you want to talk about next?") :outputContexts (dialogflow/reset-all-contexts request))))
 
 
-(defaction dbas.switch-position [{{{:keys [position]} :parameters lang :languageCode} :queryResult :as request}]
+(defaction dbas.switch-position [{{{:keys [position]} :parameters} :queryResult :as request}]
   (let [topic (-> request (dialogflow/get-context :topic) :parameters)]
     (if-let [matched-position (existing-position topic position)]
       (>>ask-opinion-about-position request topic matched-position)
@@ -327,4 +327,6 @@
     (>>reaction request reaction-data)))
 
 (defaction fallback.default [{{lang :languageCode} :queryResult :as request}]
-  (>>list-topics request "Hello I am Jebediah, the D-BAS test bot. What do you want to discuss with me?" lang))
+  (update-in
+    (>>list-topics request "Hello I am Jebediah, the D-BAS test bot. What do you want to discuss with me?" lang)
+    [:outputContexts] conj (dialogflow/context request "Whatarethetopics-followup" nil 1)))
