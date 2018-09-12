@@ -130,8 +130,9 @@
         more (drop 3 all-positions)]
     (agent/speech
       (format (strings :position-list) (:title topic) (str/join ", " positions))
-      :outputContexts (cond->> [(dialogflow/context request :free-position-in nil 1)]
-                               (not (empty? more)) (cons (dialogflow/context request :showpositions-more-followup {:more (vec more)} 1)))
+      :outputContexts (filter some? [(dialogflow/context request :free-position-in nil 1)
+                                     (when (not (empty? more))
+                                       (dialogflow/context request :showpositions-more-followup {:more (vec more)} 1))])
       :fulfillmentMessages
       [(fb/response
          (fb/rich-list-with-text
@@ -151,8 +152,9 @@
         more (drop 3 all-positions)]
     (agent/speech
       (format (strings :position-list) (:title topic) (str/join ", " positions))
-      :outputContexts (cond->> [(dialogflow/context request :free-position-in nil 1)]
-                               (not (empty? more)) (cons (dialogflow/context request :showpositions-more-followup {:more (vec more)} 1)))
+      :outputContexts (filter some? [(dialogflow/context request :free-position-in nil 1)
+                                     (when (not (empty? more))
+                                       (dialogflow/context request :showpositions-more-followup {:more (vec more)} 1))])
       :fulfillmentMessages
       [(fb/response
          (fb/rich-list-with-text
