@@ -177,7 +177,7 @@
 (defn- existing-position [topic free-form-position]
   (let [positions (:items (dbas/get-positions (:slug topic)))
         nearest (first (sort-by :confidence > (dbas/similarities positions free-form-position :key-fn (comp first :texts))))]
-    (when (> (:confidence nearest) 0.85)
+    (when (> (get nearest :confidence 0) 0.85)
       (:entity nearest))))
 
 ; TODO
