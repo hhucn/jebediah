@@ -1,0 +1,87 @@
+= Jebediah - The definite guide
+
+== The docker-compose way
+You can find the `docker-compose.yml` inside the Jebediah repository.
+You need to set following four environment variables:
+
+[%header,cols="1,5,3"]
+|===
+|Var
+|Description
+|Example
+
+|`PAGE_ACCESS_TOKEN`
+| The facebook page access token of your page.
+| EAAVNmfNNYB8BAMUzZCgEKnK ...
+
+|`DBAS_URL`
+| The base url of your D-BAS instance.
+| https://dbas.your-domain.com, web:4284
+
+|`DBAS_TOKEN`
+| An API - access token from the admin menu of your D-BAS instance.
+| f84f6:d12c1e04sdf06bd32524d ...
+
+|`DIALOGFLOW_URL`
+| The dialogflow endpoint from the facebook integration. Make sure you activated this integration!
+| https://bots.dialogflow.com/facebook/<your-project-id>/webhook
+
+|===
+
+Then `docker-compose up`
+
+=== Optional variables for jebediah
+
+[%header,cols="1,5,3"]
+|===
+|Var
+|Description
+|Example
+
+|`DIALOGFLOW_AUTH_USER`
+| The facebook page access token of your page.
+| EAAVNmfNNYB8BAMUzZCgEKnK ...
+
+|`DIALOGFLOW_AUTH_PW`
+| The base url of your D-BAS instance.
+| https://dbas.your-domain.com, web:4284
+
+|===
+
+=== The Images
+- mroerni/jebediah - The logic behind the reasoning.
+- mroerni/fb-hook - for routing facebook events to either dialogflow or eauth
+- mroerni/eauth - to store _D-BAS user - external user_ relations
+
+CAUTION: Ensure that the EAUTH /store is synced with the D-BAS DB. When you delete the D-BAS DB you have to delete ./store aswell! You have to restart eauth afterwards.
+
+== The Services
+- Dialogflow-App - for the intent analyzing.
+- Facebook-App - for getting the messages
+- D-BAS - you know... arguments
+
+== Start D-BAS
+- Get a D-BAS instance running.
+- Note the url.
+
+== Start EAUTH
+- Set `DBAS_URL` to... your DBAS_URL.
+- You can set `EAUTH_STORE` if you like. Default is `./store`.
+- `lein run` (Will start on port 1236)
+
+CAUTION: Ensure that the EAUTH /store is synced with the D-BAS DB. When you delete the D-BAS DB you have to delete ./store aswell!
+
+== Setup App
+- Follow https://dialogflow.com/docs/integrations/facebook
+- Note the callback URL from Dialogflow
+
+== Start fb-hook
+- set `DIALOGFLOW_URL` to the callback url from the step above. (I will be `https://bots.dialogflow.com/facebook/<dialogflow-project-id>/webhook`)
+- set `EAUTH_URL` to the url of eauth *with appending `/success`!* Default is: `http://localhost:1236/success`
+- `lein ring server-headless 1235`
+
+== Start Jeb
+1. Get a D-BAS instance running.
+2. Set `DBAS_BASE` to your D-BAS base url. (example: `http://0.0.0.0:4284`)
+3. Get a D-BAS API token and set `DBAS_TOKEN`
+4. Get your Facebook page access token and set `PAGE_ACCESS_TOKEN`
